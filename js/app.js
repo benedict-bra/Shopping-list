@@ -2,7 +2,7 @@
 // MAIN APP — Phase 2 (Firebase)
 // =============================================================================
 import * as data from './data.js';
-import { observeAuth, signInWithGoogle, signOutUser, getCurrentUid, getDisplayName } from './auth.js';
+import { observeAuth, signInWithGoogle, signOutUser, getCurrentUid, getDisplayName, handleRedirectResult } from './auth.js';
 import { importRecipeFromUrl } from './recipe-import.js';
 import { parseIngredient, isRealIngredient, sentenceCase } from './ingredient-parser.js';
 import { compressImage } from './photo.js';
@@ -283,6 +283,9 @@ async function reloadAll() {
 }
 
 async function init() {
+  // Handle redirect return from Google sign-in
+  await handleRedirectResult();
+
   // Show sign-in screen until auth resolves
   document.getElementById('signin-screen').hidden = false;
   document.getElementById('app-shell').hidden = true;
