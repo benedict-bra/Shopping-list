@@ -292,6 +292,8 @@ function teardownListeners() {
 function subscribeToActiveListItems() {
   if (state._unsubItems) { state._unsubItems(); state._unsubItems = null; }
   if (!state.activeListId) return;
+  // Clear immediately so old list items don't flash while new list loads
+  state.items = [];
   state._unsubItems = data.listenToItems(state.activeListId, (items) => {
     state.items = items;
     if (state.view === 'list') renderItemList();
@@ -1413,10 +1415,8 @@ function setupOmnibar() {
     const name = input.value.trim();
     if (!name) return;
 
-    // Only look at items on the ACTIVE list — never touch other lists
-    const activeItems = state.items.filter(i =>
-      (i.listId || 'default') === state.activeListId
-    );
+    // state.items is already scoped to the active list via Firestore subcollection
+    const activeItems = state.items;
 
     const matchName = lastAddedName || name;
     const existingItem = activeItems.find(i =>
