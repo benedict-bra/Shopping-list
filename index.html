@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Shopping" />
+  <title>Shopping list</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231a1a1a'%3E%3Cpath d='M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- SIGN-IN SCREEN — shown until auth resolves -->
+  <div id="signin-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:1.5rem;">
+    <svg viewBox="0 0 24 24" style="width:56px;height:56px;stroke:var(--text);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+    </svg>
+    <div style="text-align:center;">
+      <h1 style="font-size:22px;font-weight:600;margin:0 0 6px;">Shopping List</h1>
+      <p style="font-size:14px;color:var(--text-muted);margin:0;">Sign in to access your lists</p>
+    </div>
+    <button id="google-signin-btn" style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:8px;border:0.5px solid var(--border-strong);background:var(--bg-alt);font-size:14px;font-weight:500;cursor:pointer;color:var(--text);">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <p style="font-size:12px;color:var(--text-faint);">Your data is private and synced across your devices.</p>
+  </div>
+
+  <!-- APP SHELL — hidden until signed in -->
+  <div id="app-shell" hidden>
+  <div class="app">
+    <header class="header">
+      <h1>Shopping list</h1>
+    </header>
+
+    <!-- Top tabs (visible on tablet+desktop) -->
+    <nav class="tabs tabs-top">
+      <button class="tab active" data-view="list">
+        Current list <span class="count" id="list-count"></span>
+      </button>
+      <button class="tab" data-view="recipes">Recipes</button>
+      <button class="tab" data-view="settings">Settings</button>
+    </nav>
+
+    <!-- LIST VIEW -->
+    <section id="view-list">
+      <div class="list-selector" id="list-selector" hidden></div>
+      <div class="omnibar">
+        <div class="omnibar-stack">
+          <div class="omnibar-input-wrap">
+            <svg class="omnibar-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="omnibar-input" placeholder="Add or find…" autocomplete="off" />
+            <button type="button" class="omnibar-clear" id="omnibar-clear" aria-label="Clear" title="Clear" hidden>
+              <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <button type="button" class="omnibar-add-inline" id="omnibar-add" aria-label="Add item" title="Add item" disabled>
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <div class="omnibar-panel" id="omnibar-panel" hidden>
+            <!-- category select kept hidden for auto-guess logic -->
+            <select id="new-cat" style="display:none;"></select>
+          </div>
+        </div>
+        <button type="button" class="omnibar-filter" id="omnibar-filter" aria-label="Filter by store" title="Filter by store">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          <span class="omnibar-filter-label" id="omnibar-filter-label" hidden></span>
+        </button>
+      </div>
+
+      <div class="omnibar-panel-old-removed" id="omnibar-panel-removed" hidden></div>
+
+      <div id="items-container"></div>
+
+      <div class="footer">
+        <span id="stats">0 items</span>
+        <button class="btn-secondary" id="clear-checked" style="display:none;">Clear checked</button>
+      </div>
+    </section>
+
+    <!-- STORES VIEW (used internally; rendered into the Settings page now) -->
+    <section id="view-stores" style="display:none;"></section>
+
+    <!-- RECIPES VIEW -->
+    <section id="view-recipes" style="display:none;"></section>
+
+    <!-- SETTINGS VIEW -->
+    <section id="view-settings" style="display:none;">
+      <!-- User / account -->
+      <div class="settings-section">
+        <div id="settings-user-container"></div>
+      </div>
+
+      <!-- Lists management -->
+      <div class="settings-section">
+        <div id="settings-lists-container"></div>
+      </div>
+
+      <!-- Item display settings -->
+      <div class="settings-section">
+        <div id="settings-display-container"></div>
+      </div>
+
+      <!-- Categories & Stores management -->
+      <div class="settings-section">
+        <div id="settings-stores-container"></div>
+      </div>
+
+      <!-- Backup / Restore — moved out of the header -->
+      <div class="settings-section">
+        <div class="settings-section-label">Data</div>
+        <div class="settings-row">
+          <div class="settings-row-text">
+            <strong>Backup</strong>
+            <span>Download a JSON file with everything on your list.</span>
+          </div>
+          <button class="btn-secondary" id="export-btn">Export</button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-text">
+            <strong>Restore</strong>
+            <span>Replace your current data with a backup file.</span>
+          </div>
+          <button class="btn-secondary" id="import-btn">Import</button>
+          <input type="file" id="import-file" accept=".json" style="display:none;" />
+        </div>
+      </div>
+
+      <!-- Coming soon -->
+      <div class="settings-section settings-section-faded">
+        <div class="settings-section-label">Coming soon</div>
+        <ul class="settings-coming-list">
+          <li>Light / dark mode toggle</li>
+          <li>Receipt photo price import</li>
+          <li>Notifications when an item is added or ticked off</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="version-footer">
+      v1.0.0 · Phase 2
+    </div>
+  </div>
+
+  <!-- Bottom nav (visible on phone screens only) -->
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <button class="bottom-nav-tab active" data-view="list">
+      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span>Lists</span>
+    </button>
+    <button class="bottom-nav-tab" data-view="recipes">
+      <svg viewBox="0 0 24 24"><path d="M6 2 L6 22 M6 2 L4 2 L4 8 C4 10 6 11 6 11"/><path d="M14 2 L14 22 M14 2 L18 2 L18 8 C18 10 16 11 14 11 L14 22"/></svg>
+      <span>Recipes</span>
+    </button>
+    <button class="bottom-nav-tab" data-view="settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  </div><!-- end app-shell -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
