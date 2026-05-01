@@ -68,7 +68,12 @@ export function listenToItems(listId, callback) {
 }
 
 export function listenToCategories(uid, callback) {
-  return onSnapshot(catsRef(uid), (snap) => {
+  return onSnapshot(catsRef(uid), async (snap) => {
+    if (snap.empty) {
+      // First run — seed defaults then the listener will fire again
+      await seedCategories(uid);
+      return;
+    }
     const cats = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
