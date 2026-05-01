@@ -196,12 +196,16 @@ function storeName(id) {
 // -----------------------------------------------------------------------------
 
 // Called by observeAuth when user signs in
+// Guards — these must only run once
+let _globalEventsBound = false;
+let _omnibarSetup = false;
+
 async function onSignedIn(user) {
   console.log('onSignedIn fired for:', user.email);
   state.currentUid = user.uid;
   state.currentDisplayName = user.displayName || 'You';
 
-  // Show app immediately — don't wait for data
+  // Show app immediately
   document.getElementById('signin-screen').hidden = true;
   document.getElementById('app-shell').hidden = false;
 
@@ -247,9 +251,26 @@ async function onSignedIn(user) {
   state.displaySettings = await data.getDisplaySettings(user.uid);
   console.log('onSignedIn: display settings loaded, binding events');
 
-  bindGlobalEvents();
-  setupOmnibar();
-  render();
+  try {
+    if (!_globalEventsBound) {
+      bindGlobalEvents();
+      _globalEventsBound = true;
+      console.log('bindGlobalEvents: OK');
+    }
+  } catch(e) { console.error('bindGlobalEvents failed:', e); }
+
+  try {
+    if (!_omnibarSetup) {
+      setupOmnibar();
+      _omnibarSetup = true;
+      console.log('setupOmnibar: OK');
+    }
+  } catch(e) { console.error('setupOmnibar failed:', e); }
+
+  try {
+    render();
+    console.log('render: OK');
+  } catch(e) { console.error('render failed:', e); }
 }
 
 function onSignedOut() {
@@ -290,10 +311,18 @@ async function init() {
   document.getElementById('signin-screen').hidden = false;
   document.getElementById('app-shell').hidden = true;
 
-  // Handle redirect return from Google sign-in (must be called before observeAuth)
-  await handleRedirectResult();
+  // Handle redirect return — must happen before observeAuth
+  // getRedirectResult consumes the pending redirect so it doesn't loop
+  const redirectUser = await handleRedirectResult();
+  if (redirectUser) {
+    console.log('init: redirect user found, signing in directly');
+    await onSignedIn(redirectUser);
+    // Still set up observeAuth to handle future sign-out
+    observeAuth(() => {}, onSignedOut);
+    return;
+  }
 
-  // observeAuth will call onSignedIn if user is already authenticated
+  // No redirect — use normal auth state observer
   observeAuth(onSignedIn, onSignedOut);
 }
 

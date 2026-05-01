@@ -28,11 +28,14 @@ export async function handleRedirectResult() {
     if (result?.user) {
       console.log('handleRedirectResult: got user', result.user.email);
       await ensureUserProfile(result.user);
+      return result.user;
     } else {
       console.log('handleRedirectResult: no redirect result');
+      return null;
     }
   } catch (err) {
     console.error('Redirect sign-in error:', err.code, err.message);
+    return null;
   }
 }
 
