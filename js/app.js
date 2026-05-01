@@ -312,10 +312,9 @@ async function reloadAll() {
 }
 
 async function init() {
-  // Show nothing while auth state resolves — avoids sign-in flash for returning users
-  document.getElementById('signin-screen').hidden = true;
+  // Show sign-in screen by default until auth resolves
+  document.getElementById('signin-screen').hidden = false;
   document.getElementById('app-shell').hidden = true;
-  document.getElementById('loading-screen').hidden = false;
 
   // Handle redirect return — must happen before observeAuth
   // getRedirectResult consumes the pending redirect so it doesn't loop
