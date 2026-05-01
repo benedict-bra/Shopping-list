@@ -586,7 +586,7 @@ function openListIconModal(existingList) {
       await reloadAll();
       render();
     } else {
-      const newList = await data.createList(state.currentUid, { name, icon: chosenIcon, colour: chosenColour, displayName: state.currentDisplayName);
+      const newList = await data.createList(state.currentUid, { name, icon: chosenIcon, colour: chosenColour, displayName: state.currentDisplayName });
       modal.remove();
       await reloadAll();
       state.activeListId = newList.id;
