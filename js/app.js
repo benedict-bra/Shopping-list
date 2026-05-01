@@ -383,8 +383,8 @@ async function render() {
 
   const activeList = state.lists.find(l => l.id === state.activeListId);
   const listLabel = state.lists.length > 1 && activeList ? ` — ${activeList.name}` : '';
-  $('#list-count').textContent = state.items.filter(i => (i.listId || 'default') === state.activeListId).length > 0
-    ? `(${state.items.filter(i => (i.listId || 'default') === state.activeListId).length}${listLabel})`
+  $('#list-count').textContent = state.items.length > 0
+    ? `(${state.items.length}${listLabel})`
     : listLabel ? `(${listLabel.slice(3)})` : '';
 
   $('#view-list').style.display = state.view === 'list' ? 'block' : 'none';
@@ -596,7 +596,7 @@ function openListIconModal(existingList) {
   // Delete (edit mode only, only if more than 1 list)
   document.getElementById('nl-delete')?.addEventListener('click', async () => {
     const list = existingList;
-    const count = state.items.filter(i => (i.listId || 'default') === list.id).length;
+    const count = list.id === state.activeListId ? state.items.length : 0;
     const msg = count > 0
       ? `Delete "${list.name}"? ${count} item${count === 1 ? '' : 's'} will move to the first list.`
       : `Delete "${list.name}"?`;
@@ -654,7 +654,8 @@ async function renderItemList() {
   const container = $('#items-container');
 
   // Filter items by active list (items without listId belong to 'default')
-  let visible = state.items.filter(i => (i.listId || 'default') === state.activeListId);
+  // Items are already scoped to the active list via Firestore subcollection
+  let visible = [...state.items];
   if (state.activeStoreIds.length > 0) {
     visible = visible.filter(i => i.storeIds && state.activeStoreIds.some(sid => i.storeIds.includes(sid)));
   if (state.filterAddedBy) {
@@ -1464,7 +1465,6 @@ function setupOmnibar() {
       qty: '',
       categoryId,
       storeIds,
-      listId: state.activeListId,
       addedBy: state.currentUid,
       addedByName: state.currentDisplayName,
     });
