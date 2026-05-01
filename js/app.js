@@ -27,7 +27,7 @@ const state = {
   categories: [],
   recipes: [],
   lists: [],
-  displaySettings: { showPrice: true, showStore: true, showCategory: true, showAddedBy: false },
+  displaySettings: { showPrice: true, showStore: true, showCategory: true, showAddedBy: false, theme: 'auto' },
   checkedExpanded: true,
   searchQuery: '',
   filterAddedBy: null,
@@ -205,7 +205,8 @@ async function onSignedIn(user) {
   state.currentUid = user.uid;
   state.currentDisplayName = user.displayName || 'You';
 
-  // Show app immediately
+  // Hide loading, show app
+  document.getElementById('loading-screen').hidden = true;
   document.getElementById('signin-screen').hidden = true;
   document.getElementById('app-shell').hidden = false;
 
@@ -249,6 +250,7 @@ async function onSignedIn(user) {
 
   // Load display settings
   state.displaySettings = await data.getDisplaySettings(user.uid);
+  applyTheme(state.displaySettings.theme);
   console.log('onSignedIn: display settings loaded, binding events');
 
   try {
@@ -279,6 +281,7 @@ function onSignedOut() {
   state.currentUid = null;
   state.lists = [];
   state.items = [];
+  document.getElementById('loading-screen').hidden = true;
   document.getElementById('signin-screen').hidden = false;
   document.getElementById('app-shell').hidden = true;
 }
@@ -309,9 +312,10 @@ async function reloadAll() {
 }
 
 async function init() {
-  // Show sign-in screen by default
-  document.getElementById('signin-screen').hidden = false;
+  // Show nothing while auth state resolves — avoids sign-in flash for returning users
+  document.getElementById('signin-screen').hidden = true;
   document.getElementById('app-shell').hidden = true;
+  document.getElementById('loading-screen').hidden = false;
 
   // Handle redirect return — must happen before observeAuth
   // getRedirectResult consumes the pending redirect so it doesn't loop
@@ -2172,6 +2176,13 @@ function renderListsSettings() {
   });
 }
 
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'light') root.setAttribute('data-theme', 'light');
+  else if (theme === 'dark') root.setAttribute('data-theme', 'dark');
+  else root.removeAttribute('data-theme'); // auto — follows system
+}
+
 function renderDisplaySettings() {
   const container = document.getElementById('settings-display-container');
   if (!container) return;
@@ -2199,8 +2210,29 @@ function renderDisplaySettings() {
               <span class="toggle-track"></span>
             </label>
           </li>`).join('')}
+        <li class="aisle-row" style="justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;">Theme</div>
+            <div style="font-size:11px;color:var(--text-muted);">Appearance override</div>
+          </div>
+          <div class="theme-toggle">
+            <button class="theme-btn ${ds.theme === 'light' ? 'active' : ''}" data-theme-val="light">Light</button>
+            <button class="theme-btn ${ds.theme === 'auto' || !ds.theme ? 'active' : ''}" data-theme-val="auto">Auto</button>
+            <button class="theme-btn ${ds.theme === 'dark' ? 'active' : ''}" data-theme-val="dark">Dark</button>
+          </div>
+        </li>
       </ul>
     </div>`;
+
+  container.querySelectorAll('[data-theme-val]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const theme = btn.dataset.themeVal;
+      await data.setDisplaySettings(state.currentUid, { theme });
+      state.displaySettings.theme = theme;
+      applyTheme(theme);
+      renderDisplaySettings();
+    });
+  });
 
   container.querySelectorAll('[data-display-key]').forEach(input => {
     input.addEventListener('change', async () => {

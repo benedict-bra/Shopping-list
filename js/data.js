@@ -368,6 +368,7 @@ const DEFAULT_DISPLAY = {
   showStore:    true,
   showCategory: true,
   showAddedBy:  false,
+  theme:        'auto',  // 'auto' | 'light' | 'dark'
 };
 
 export async function getDisplaySettings(uid) {
