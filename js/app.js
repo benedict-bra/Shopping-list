@@ -197,10 +197,14 @@ function storeName(id) {
 
 // Called by observeAuth when user signs in
 async function onSignedIn(user) {
+  console.log('onSignedIn fired for:', user.email);
   state.currentUid = user.uid;
   state.currentDisplayName = user.displayName || 'You';
 
-  // Tear down any existing listeners
+  // Show app immediately — don't wait for data
+  document.getElementById('signin-screen').hidden = true;
+  document.getElementById('app-shell').hidden = false;
+
   teardownListeners();
 
   // Start real-time listeners
@@ -241,16 +245,15 @@ async function onSignedIn(user) {
 
   // Load display settings
   state.displaySettings = await data.getDisplaySettings(user.uid);
-
-  // Show app, hide sign-in screen
-  document.getElementById('signin-screen').hidden = true;
-  document.getElementById('app-shell').hidden = false;
+  console.log('onSignedIn: display settings loaded, binding events');
 
   bindGlobalEvents();
   setupOmnibar();
+  render();
 }
 
 function onSignedOut() {
+  console.log('onSignedOut fired');
   teardownListeners();
   state.currentUid = null;
   state.lists = [];

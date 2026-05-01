@@ -23,12 +23,16 @@ export async function signInWithGoogle() {
 // Call once on page load to process the redirect return
 export async function handleRedirectResult() {
   try {
+    console.log('handleRedirectResult: checking for redirect result...');
     const result = await getRedirectResult(auth);
     if (result?.user) {
+      console.log('handleRedirectResult: got user', result.user.email);
       await ensureUserProfile(result.user);
+    } else {
+      console.log('handleRedirectResult: no redirect result');
     }
   } catch (err) {
-    console.error('Redirect sign-in error:', err);
+    console.error('Redirect sign-in error:', err.code, err.message);
   }
 }
 
