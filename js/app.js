@@ -205,8 +205,7 @@ async function onSignedIn(user) {
   state.currentUid = user.uid;
   state.currentDisplayName = user.displayName || 'You';
 
-  // Hide loading, show app
-  document.getElementById('loading-screen').hidden = true;
+  // Show app, hide sign-in
   document.getElementById('signin-screen').hidden = true;
   document.getElementById('app-shell').hidden = false;
 
@@ -281,7 +280,6 @@ function onSignedOut() {
   state.currentUid = null;
   state.lists = [];
   state.items = [];
-  document.getElementById('loading-screen').hidden = true;
   document.getElementById('signin-screen').hidden = false;
   document.getElementById('app-shell').hidden = true;
 }
