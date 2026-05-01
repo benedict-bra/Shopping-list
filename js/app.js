@@ -283,13 +283,14 @@ async function reloadAll() {
 }
 
 async function init() {
-  // Handle redirect return from Google sign-in
-  await handleRedirectResult();
-
-  // Show sign-in screen until auth resolves
+  // Show sign-in screen by default
   document.getElementById('signin-screen').hidden = false;
   document.getElementById('app-shell').hidden = true;
 
+  // Handle redirect return from Google sign-in (must be called before observeAuth)
+  await handleRedirectResult();
+
+  // observeAuth will call onSignedIn if user is already authenticated
   observeAuth(onSignedIn, onSignedOut);
 }
 

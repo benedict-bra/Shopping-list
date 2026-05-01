@@ -36,14 +36,29 @@ const displayRef = (uid)            => doc(db, 'users', uid, 'prefs', 'display')
 // =============================================================================
 
 export function listenToLists(uid, callback) {
-  const q = query(
+  // Query requires a composite index on (memberIds, orderIndex).
+  // If the index isn't ready yet, fall back to unordered query.
+  const orderedQuery = query(
     collection(db, 'lists'),
     where('memberIds', 'array-contains', uid),
     orderBy('orderIndex')
   );
-  return onSnapshot(q, (snap) => {
+  const fallbackQuery = query(
+    collection(db, 'lists'),
+    where('memberIds', 'array-contains', uid)
+  );
+
+  let unsub = onSnapshot(orderedQuery, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, (err) => {
+    console.warn('listenToLists ordered query failed, falling back:', err.message);
+    // Fall back to unordered — index is still building
+    unsub = onSnapshot(fallbackQuery, (snap) => {
+      callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
   });
+
+  return () => unsub();
 }
 
 export function listenToItems(listId, callback) {
@@ -72,13 +87,21 @@ export function listenToStores(uid, callback) {
 // =============================================================================
 
 export async function getLists(uid) {
-  const q = query(
-    collection(db, 'lists'),
-    where('memberIds', 'array-contains', uid),
-    orderBy('orderIndex')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const q = query(
+      collection(db, 'lists'),
+      where('memberIds', 'array-contains', uid),
+      orderBy('orderIndex')
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    // Index still building — fall back to unordered
+    console.warn('getLists index not ready, falling back:', err.message);
+    const q = query(collection(db, 'lists'), where('memberIds', 'array-contains', uid));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
 }
 
 export async function createList(uid, { name, icon = 'shopping-cart', colour = 'teal', displayName = '' }) {
