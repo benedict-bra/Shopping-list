@@ -418,11 +418,6 @@ function renderListSelector() {
   let el = document.getElementById('list-selector');
   if (!el) return;
 
-  if (state.lists.length <= 1) {
-    el.hidden = true;
-    el.innerHTML = '';
-    return;
-  }
   el.hidden = false;
 
   el.innerHTML = state.lists.map(list => {
@@ -528,6 +523,7 @@ function openListIconModal(existingList) {
             <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
           </button>
           <span class="modal-actions-spacer"></span>` : ''}
+        ${isEdit ? `<button class="btn-secondary" id="nl-share">Share</button>` : ''}
         <button class="btn-secondary" id="nl-cancel">Cancel</button>
         <button class="btn-primary" id="nl-save">${isEdit ? 'Save' : 'Create'}</button>
       </div>
@@ -595,6 +591,12 @@ function openListIconModal(existingList) {
 
   document.getElementById('nl-cancel').addEventListener('click', () => modal.remove());
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  // Share button (edit mode only)
+  document.getElementById('nl-share')?.addEventListener('click', () => {
+    modal.remove();
+    openShareModal(existingList.id);
+  });
 
   // Delete (edit mode only, only if more than 1 list)
   document.getElementById('nl-delete')?.addEventListener('click', async () => {
