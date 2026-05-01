@@ -2189,3 +2189,20 @@ input, select, textarea { font: inherit; color: inherit; }
   font-size: 14px;
 }
 
+
+/* Sign-in screen */
+.signin-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  gap: 1.5rem;
+}
+
+/* hidden attribute must override display — !important needed when
+   element has a display value set via class */
+[hidden] {
+  display: none !important;
+}
