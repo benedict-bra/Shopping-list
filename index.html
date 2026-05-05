@@ -9,11 +9,17 @@
   <meta name="apple-mobile-web-app-title" content="Shopping" />
   <title>Shopping list</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231a1a1a'%3E%3Cpath d='M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z'/%3E%3C/svg%3E" />
+  <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <!-- SIGN-IN SCREEN — shown until auth resolves -->
-  <div id="signin-screen" class="signin-screen">
+  <!-- LOADING SCREEN — shown briefly while auth state resolves -->
+  <div id="loading-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+    <div style="width:32px;height:32px;border:3px solid var(--border-strong);border-top-color:var(--text-muted);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  </div>
+
+  <div id="signin-screen" class="signin-screen" hidden>
     <svg viewBox="0 0 24 24" style="width:56px;height:56px;stroke:var(--text);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;">
       <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
     </svg>
@@ -153,6 +159,41 @@
   </div>
 
   <!-- Bottom nav (visible on phone screens only) -->
+  <!-- FLOATING ADD BUTTON — mobile only, list view only -->
+  <button id="fab-add" class="fab" aria-label="Add item" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+      stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+
+  <!-- BOTTOM SHEET -->
+  <div id="add-sheet-backdrop" class="add-sheet-backdrop" hidden></div>
+  <div id="add-sheet" class="add-sheet" hidden>
+    <div class="add-sheet-handle"></div>
+    <div class="add-sheet-inner">
+      <div class="add-sheet-search-row">
+        <div class="add-sheet-input-wrap">
+          <svg class="add-sheet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="add-sheet-input" type="text" placeholder="Search or add…"
+            autocomplete="off" autocorrect="off" spellcheck="false" />
+          <button id="add-sheet-clear" class="add-sheet-clear" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <button id="add-sheet-done" class="add-sheet-done">Done</button>
+      </div>
+      <div id="add-sheet-suggestions" class="add-sheet-suggestions"></div>
+      <div id="add-sheet-recent" class="add-sheet-recent"></div>
+    </div>
+  </div>
+
   <nav class="bottom-nav" aria-label="Main navigation">
     <button class="bottom-nav-tab active" data-view="list">
       <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
