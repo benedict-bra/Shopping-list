@@ -318,23 +318,34 @@ async function reloadAll() {
 }
 
 async function init() {
-  // Show sign-in screen by default until auth resolves
-  document.getElementById('signin-screen').hidden = false;
-  document.getElementById('app-shell').hidden = true;
+  const loadingEl = document.getElementById('loading-screen');
+  const signinEl  = document.getElementById('signin-screen');
+  const appEl     = document.getElementById('app-shell');
 
-  // Handle redirect return — must happen before observeAuth
-  // getRedirectResult consumes the pending redirect so it doesn't loop
+  // Show spinner while auth resolves
+  if (loadingEl) { loadingEl.hidden = false; loadingEl.style.display = 'flex'; }
+  if (signinEl)  signinEl.hidden = true;
+  if (appEl)     appEl.hidden = true;
+
   const redirectUser = await handleRedirectResult();
   if (redirectUser) {
-    console.log('init: redirect user found, signing in directly');
+    console.log('init: redirect user found');
+    if (loadingEl) { loadingEl.hidden = true; loadingEl.style.display = 'none'; }
     await onSignedIn(redirectUser);
-    // Still set up observeAuth to handle future sign-out
     observeAuth(() => {}, onSignedOut);
     return;
   }
 
-  // No redirect — use normal auth state observer
-  observeAuth(onSignedIn, onSignedOut);
+  observeAuth(
+    async (user) => {
+      if (loadingEl) { loadingEl.hidden = true; loadingEl.style.display = 'none'; }
+      await onSignedIn(user);
+    },
+    () => {
+      if (loadingEl) { loadingEl.hidden = true; loadingEl.style.display = 'none'; }
+      onSignedOut();
+    }
+  );
 }
 
 // -----------------------------------------------------------------------------
