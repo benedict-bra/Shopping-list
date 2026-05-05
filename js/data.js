@@ -394,3 +394,68 @@ export async function exportAll(uid, lists) {
   result.stores = await getStores(uid);
   return result;
 }
+
+// =============================================================================
+// ITEM HISTORY — implicit history from all items ever added
+// =============================================================================
+// Stored as a simple map of lowercase name -> { name, categoryId, lastUsed }
+// under /users/{uid}/prefs/history
+
+export async function getItemHistory(uid) {
+  const snap = await getDoc(doc(db, 'users', uid, 'prefs', 'history'));
+  return snap.exists() ? snap.data() : {};
+}
+
+export async function recordItemHistory(uid, item) {
+  if (!item?.name) return;
+  const key = item.name.toLowerCase().trim();
+  const ref = doc(db, 'users', uid, 'prefs', 'history');
+  await setDoc(ref, {
+    [key]: {
+      name: item.name,
+      categoryId: item.categoryId || 'other',
+      lastUsed: Date.now(),
+    }
+  }, { merge: true });
+}
+
+// =============================================================================
+// RECIPES — stored per user
+// =============================================================================
+
+const recipesRef = (uid) => collection(db, 'users', uid, 'recipes');
+const recipeRef  = (uid, recipeId) => doc(db, 'users', uid, 'recipes', recipeId);
+
+export async function getRecipes(uid) {
+  const snap = await getDocs(recipesRef(uid));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
+}
+
+export function listenToRecipes(uid, callback) {
+  return onSnapshot(recipesRef(uid), (snap) => {
+    const recipes = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
+    callback(recipes);
+  });
+}
+
+export async function addRecipe(uid, recipe) {
+  const newRecipe = {
+    name: recipe.name || 'Imported recipe',
+    sourceUrl: recipe.sourceUrl || '',
+    thumbnailUrl: recipe.thumbnailUrl || null,
+    ingredients: recipe.ingredients || [],
+    addedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(recipesRef(uid), newRecipe);
+  return { id: ref.id, ...newRecipe };
+}
+
+export async function updateRecipe(uid, recipeId, changes) {
+  await updateDoc(recipeRef(uid, recipeId), changes);
+}
+
+export async function deleteRecipe(uid, recipeId) {
+  await deleteDoc(recipeRef(uid, recipeId));
+}

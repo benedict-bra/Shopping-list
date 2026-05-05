@@ -36,6 +36,7 @@ const state = {
   _unsubItems: null,
   _unsubCats: null,
   _unsubStores: null,
+  _unsubRecipes: null,
 };
 
 // -----------------------------------------------------------------------------
@@ -222,6 +223,12 @@ async function onSignedIn(user) {
     if (state.view === 'list' || state.view === 'settings') render();
   });
 
+  // Recipes listener
+  state._unsubRecipes = data.listenToRecipes(user.uid, (recipes) => {
+    state.recipes = recipes;
+    if (state.view === 'recipes') render();
+  });
+
   state._unsubLists = data.listenToLists(user.uid, async (lists) => {
     state.lists = lists;
 
@@ -263,6 +270,7 @@ async function onSignedIn(user) {
   try {
     if (!_omnibarSetup) {
       setupOmnibar();
+      setupAddSheet();
       _omnibarSetup = true;
       console.log('setupOmnibar: OK');
     }
@@ -285,7 +293,7 @@ function onSignedOut() {
 }
 
 function teardownListeners() {
-  ['_unsubLists', '_unsubItems', '_unsubCats', '_unsubStores'].forEach(k => {
+  ['_unsubLists', '_unsubItems', '_unsubCats', '_unsubStores', '_unsubRecipes'].forEach(k => {
     if (state[k]) { state[k](); state[k] = null; }
   });
 }
@@ -2451,7 +2459,7 @@ function openImportPickerModal(recipe) {
       alert('At least one ingredient is required to save the recipe.');
       return;
     }
-    await data.addRecipe({
+    await data.addRecipe(state.currentUid, {
       name,
       sourceUrl,
       thumbnailUrl: recipe.thumbnailUrl || null,
@@ -2514,7 +2522,7 @@ function openManualRecipeModal() {
       alert('No valid ingredients found.');
       return;
     }
-    await data.addRecipe({ name, sourceUrl, ingredients });
+    await data.addRecipe(state.currentUid, { name, sourceUrl, ingredients });
     modal.remove();
     await reloadAll();
     render();
@@ -2525,7 +2533,7 @@ async function deleteRecipeConfirm(id) {
   const recipe = state.recipes.find(r => r.id === id);
   if (!recipe) return;
   if (!confirm(`Delete recipe "${recipe.name}"?`)) return;
-  await data.deleteRecipe(id);
+  await data.deleteRecipe(state.currentUid, id);
   await reloadAll();
   render();
 }
@@ -2681,7 +2689,7 @@ function openEditRecipeMetadataModal(recipe) {
     const name = $('#erm-name', modal).value.trim();
     const sourceUrl = $('#erm-url', modal).value.trim();
     if (!name) return;
-    await data.updateRecipe(recipe.id, { name, sourceUrl });
+    await data.updateRecipe(state.currentUid, recipe.id, { name, sourceUrl });
     modal.remove();
     await reloadAll();
     render();
@@ -2850,6 +2858,278 @@ async function handleSignOut() {
   await signOutUser();
 }
 
+
+
+// =============================================================================
+// BOTTOM SHEET — mobile add/search experience
+// =============================================================================
+
+let _sheetHistory = {};      // cached item history
+let _sheetRecentlyAdded = []; // items added in this session
+
+async function openAddSheet() {
+  // Load history if not cached
+  if (Object.keys(_sheetHistory).length === 0) {
+    _sheetHistory = await data.getItemHistory(state.currentUid);
+  }
+  _sheetRecentlyAdded = [];
+
+  const backdrop = document.getElementById('add-sheet-backdrop');
+  const sheet = document.getElementById('add-sheet');
+  const input = document.getElementById('add-sheet-input');
+
+  backdrop.hidden = false;
+  sheet.hidden = false;
+
+  // Trigger animation on next frame
+  requestAnimationFrame(() => {
+    backdrop.classList.add('open');
+    sheet.classList.add('open');
+  });
+
+  renderSheetSuggestions('');
+  renderSheetRecent();
+
+  // Auto-focus after animation
+  setTimeout(() => input?.focus(), 320);
+}
+
+function closeAddSheet() {
+  const backdrop = document.getElementById('add-sheet-backdrop');
+  const sheet = document.getElementById('add-sheet');
+  const input = document.getElementById('add-sheet-input');
+
+  backdrop.classList.remove('open');
+  sheet.classList.remove('open');
+
+  setTimeout(() => {
+    backdrop.hidden = true;
+    sheet.hidden = true;
+    if (input) input.value = '';
+    document.getElementById('add-sheet-clear').hidden = true;
+    renderSheetSuggestions('');
+  }, 300);
+}
+
+function renderSheetSuggestions(query) {
+  const container = document.getElementById('add-sheet-suggestions');
+  if (!container) return;
+
+  const q = query.trim().toLowerCase();
+
+  // Build candidate list from history
+  let candidates = Object.values(_sheetHistory)
+    .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+
+  // Filter by query if present
+  if (q) {
+    candidates = candidates.filter(c => c.name.toLowerCase().includes(q));
+  }
+
+  // Limit to 20 suggestions
+  candidates = candidates.slice(0, 20);
+
+  let html = '';
+
+  // If typed something not in history, show "Add X" row at top
+  const exactMatch = candidates.find(c => c.name.toLowerCase() === q);
+  if (q && !exactMatch) {
+    html += `
+      <div class="add-sheet-row" data-action="add-new" data-name="${escapeHtml(query)}">
+        <div class="add-sheet-row-icon">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <div class="add-sheet-row-body">
+          <div class="add-sheet-row-name">Add "<strong>${escapeHtml(query)}</strong>"</div>
+        </div>
+      </div>`;
+  }
+
+  if (candidates.length === 0 && !q) {
+    html += `<p style="padding:20px 16px;color:var(--text-muted);font-size:13px;">
+      Start typing to search your item history.</p>`;
+  }
+
+  if (candidates.length > 0) {
+    html += `<div class="add-sheet-section-label">${q ? 'Matches' : 'Recent items'}</div>`;
+    candidates.forEach(item => {
+      // Check status on current list
+      const onList = state.items.find(i =>
+        !i.checked && i.name.toLowerCase() === item.name.toLowerCase()
+      );
+      const inTrolley = state.items.find(i =>
+        i.checked && i.name.toLowerCase() === item.name.toLowerCase()
+      );
+
+      let badge = '';
+      let qty = '';
+      if (onList) {
+        badge = `<span class="add-sheet-row-badge add-sheet-row-badge--on-list">on list</span>`;
+        const amt = onList.qtyAmount || 1;
+        qty = `
+          <div class="add-sheet-qty" data-item-id="${onList.id}">
+            <button class="add-sheet-qty-btn" data-qty-action="dec" data-item-id="${onList.id}" data-current="${amt}">−</button>
+            <span class="add-sheet-qty-val">${amt}</span>
+            <button class="add-sheet-qty-btn" data-qty-action="inc" data-item-id="${onList.id}" data-current="${amt}">+</button>
+          </div>`;
+      } else if (inTrolley) {
+        badge = `<span class="add-sheet-row-badge add-sheet-row-badge--checked">in trolley</span>`;
+      }
+
+      const catIcon = categoryIconFor(item.categoryId, {});
+
+      html += `
+        <div class="add-sheet-row" data-action="${onList ? 'on-list' : inTrolley ? 'uncheck' : 'add'}"
+          data-name="${escapeHtml(item.name)}"
+          data-cat="${escapeHtml(item.categoryId || 'other')}"
+          data-item-id="${onList?.id || inTrolley?.id || ''}">
+          <div class="add-sheet-row-icon" style="background:transparent;">
+            ${catIcon}
+          </div>
+          <div class="add-sheet-row-body">
+            <div class="add-sheet-row-name">${escapeHtml(item.name)}</div>
+            ${qty}
+          </div>
+          ${badge}
+        </div>`;
+    });
+  }
+
+  container.innerHTML = html;
+
+  // Bind row actions
+  container.querySelectorAll('[data-action="add-new"]').forEach(row => {
+    row.addEventListener('click', () => sheetAddNew(row.dataset.name));
+  });
+
+  container.querySelectorAll('[data-action="add"]').forEach(row => {
+    row.addEventListener('click', () => sheetAddItem(row.dataset.name, row.dataset.cat));
+  });
+
+  container.querySelectorAll('[data-action="uncheck"]').forEach(row => {
+    row.addEventListener('click', () => sheetUncheckItem(row.dataset.itemId, row.dataset.name));
+  });
+
+  container.querySelectorAll('[data-action="on-list"]').forEach(row => {
+    // Tap the row body to highlight in list — qty buttons handle quantity
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.add-sheet-qty')) return;
+      highlightItemInList(row.dataset.itemId);
+    });
+  });
+
+  // Qty buttons
+  container.querySelectorAll('[data-qty-action]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const itemId = btn.dataset.itemId;
+      const current = parseInt(btn.dataset.current) || 1;
+      const newAmt = btn.dataset.qtyAction === 'inc' ? current + 1 : Math.max(1, current - 1);
+      await data.updateItem(state.activeListId, itemId, { qtyAmount: newAmt, qtyUnit: 'each' });
+      // Refresh suggestions
+      renderSheetSuggestions(document.getElementById('add-sheet-input')?.value || '');
+    });
+  });
+}
+
+function renderSheetRecent() {
+  const container = document.getElementById('add-sheet-recent');
+  if (!container || _sheetRecentlyAdded.length === 0) {
+    if (container) container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = `
+    <div class="add-sheet-section-label">Just added</div>
+    ${_sheetRecentlyAdded.map(name => `
+      <div class="add-sheet-row" style="padding:8px 16px;">
+        <div class="add-sheet-row-body">
+          <div class="add-sheet-row-name" style="font-size:13px;">${escapeHtml(name)}</div>
+        </div>
+        <span class="add-sheet-row-badge add-sheet-row-badge--on-list">✓</span>
+      </div>`).join('')}`;
+}
+
+async function sheetAddNew(name) {
+  await sheetAddItem(name, guessCategoryId(name));
+}
+
+async function sheetAddItem(name, categoryId) {
+  const trimmed = sentenceCase(name.trim());
+  if (!trimmed) return;
+  const catId = categoryId || guessCategoryId(trimmed);
+
+  await data.addItem(state.activeListId, {
+    name: trimmed,
+    categoryId: catId,
+    storeIds: state.activeStoreIds.length > 0 ? [...state.activeStoreIds] : [],
+    addedBy: state.currentUid,
+    addedByName: state.currentDisplayName,
+  });
+
+  // Record in history
+  await data.recordItemHistory(state.currentUid, { name: trimmed, categoryId: catId });
+  _sheetHistory[trimmed.toLowerCase()] = { name: trimmed, categoryId: catId, lastUsed: Date.now() };
+
+  // Track recently added
+  _sheetRecentlyAdded.unshift(trimmed);
+
+  // Clear input, refresh suggestions
+  const input = document.getElementById('add-sheet-input');
+  if (input) input.value = '';
+  document.getElementById('add-sheet-clear').hidden = true;
+  renderSheetSuggestions('');
+  renderSheetRecent();
+}
+
+async function sheetUncheckItem(itemId, name) {
+  await data.updateItem(state.activeListId, itemId, { checked: false });
+  _sheetRecentlyAdded.unshift(name);
+  renderSheetSuggestions(document.getElementById('add-sheet-input')?.value || '');
+  renderSheetRecent();
+}
+
+function highlightItemInList(itemId) {
+  const el = document.querySelector(`.item[data-id="${itemId}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('item-highlight');
+  setTimeout(() => el.classList.remove('item-highlight'), 1500);
+}
+
+function setupAddSheet() {
+  const fab = document.getElementById('fab-add');
+  const input = document.getElementById('add-sheet-input');
+  const clearBtn = document.getElementById('add-sheet-clear');
+  const doneBtn = document.getElementById('add-sheet-done');
+  const backdrop = document.getElementById('add-sheet-backdrop');
+
+  if (!fab) return;
+
+  fab.addEventListener('click', openAddSheet);
+  doneBtn?.addEventListener('click', closeAddSheet);
+  backdrop?.addEventListener('click', closeAddSheet);
+
+  input?.addEventListener('input', () => {
+    const val = input.value;
+    clearBtn.hidden = !val;
+    renderSheetSuggestions(val);
+  });
+
+  input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && input.value.trim()) {
+      e.preventDefault();
+      sheetAddNew(input.value.trim());
+    }
+    if (e.key === 'Escape') closeAddSheet();
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    input.value = '';
+    clearBtn.hidden = true;
+    renderSheetSuggestions('');
+    input.focus();
+  });
+}
 
 init();
 
