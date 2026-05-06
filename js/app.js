@@ -1682,12 +1682,13 @@ function openEditModal(id) {
     </div>`;
   document.body.appendChild(modal);
 
-  // Populate last-recorded price hint, and pre-fill the unit dropdown to match
+  // Populate last-recorded price — pre-fill both value and unit
   (async () => {
     const last = await data.getPrice(state.currentUid, item.name);
     if (last) {
       $('#last-price-hint', modal).textContent =
         `Last recorded: $${last.price.toFixed(2)} per ${unitLabel(last.unit)}`;
+      $('#edit-price', modal).value = last.price.toFixed(2);
       $('#edit-price-unit', modal).value = last.unit;
     } else {
       $('#last-price-hint', modal).textContent = 'Stored as $/unit so the estimate updates with your quantity.';
@@ -2683,12 +2684,40 @@ function openEditRecipeMetadataModal(recipe) {
         <label>Source URL</label>
         <input id="erm-url" type="url" value="${escapeHtml(recipe.sourceUrl || '')}" placeholder="https://..." />
       </div>
+      <div class="modal-row">
+        <label>Image URL <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— paste any image link</span></label>
+        <input id="erm-image" type="url" value="${escapeHtml(recipe.thumbnailUrl || '')}" placeholder="https://example.com/image.jpg" />
+        ${recipe.thumbnailUrl ? `
+          <div style="margin-top:8px;border-radius:8px;overflow:hidden;max-height:120px;">
+            <img src="${escapeHtml(recipe.thumbnailUrl)}" style="width:100%;height:120px;object-fit:cover;" />
+          </div>` : ''}
+      </div>
       <div class="modal-actions">
         <button class="btn-secondary" id="erm-cancel">Cancel</button>
         <button class="btn-primary" id="erm-save">Save</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
+
+  // Live preview as URL is typed
+  $('#erm-image', modal).addEventListener('input', (e) => {
+    const url = e.target.value.trim();
+    let preview = modal.querySelector('.erm-img-preview');
+    if (url) {
+      if (!preview) {
+        preview = document.createElement('div');
+        preview.className = 'erm-img-preview';
+        preview.style.cssText = 'margin-top:8px;border-radius:8px;overflow:hidden;max-height:120px;';
+        preview.innerHTML = `<img src="${escapeHtml(url)}" style="width:100%;height:120px;object-fit:cover;" onerror="this.parentNode.style.display='none'" />`;
+        e.target.parentNode.appendChild(preview);
+      } else {
+        preview.style.display = '';
+        preview.querySelector('img').src = url;
+      }
+    } else if (preview) {
+      preview.style.display = 'none';
+    }
+  });
 
   $('#erm-cancel', modal).addEventListener('click', () => {
     modal.remove();
@@ -2703,8 +2732,9 @@ function openEditRecipeMetadataModal(recipe) {
   $('#erm-save', modal).addEventListener('click', async () => {
     const name = $('#erm-name', modal).value.trim();
     const sourceUrl = $('#erm-url', modal).value.trim();
+    const thumbnailUrl = $('#erm-image', modal).value.trim() || null;
     if (!name) return;
-    await data.updateRecipe(state.currentUid, recipe.id, { name, sourceUrl });
+    await data.updateRecipe(state.currentUid, recipe.id, { name, sourceUrl, thumbnailUrl });
     modal.remove();
     await reloadAll();
     render();
@@ -2900,6 +2930,7 @@ async function openAddSheet() {
   requestAnimationFrame(() => {
     backdrop.classList.add('open');
     sheet.classList.add('open');
+    updateSheetPosition();
   });
 
   renderSheetSuggestions('');
@@ -3139,8 +3170,26 @@ function setupAddSheet() {
   const clearBtn = document.getElementById('add-sheet-clear');
   const doneBtn = document.getElementById('add-sheet-done');
   const backdrop = document.getElementById('add-sheet-backdrop');
+  const sheet = document.getElementById('add-sheet');
 
   if (!fab) return;
+
+  // Keep sheet pinned above keyboard using visualViewport
+  function updateSheetPosition() {
+    if (!sheet || sheet.hidden) return;
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      const offsetFromBottom = window.innerHeight - (vv.offsetTop + vv.height);
+      sheet.style.bottom = `${Math.max(0, offsetFromBottom)}px`;
+    } else {
+      sheet.style.bottom = '0px';
+    }
+  }
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateSheetPosition);
+    window.visualViewport.addEventListener('scroll', updateSheetPosition);
+  }
 
   fab.addEventListener('click', openAddSheet);
   doneBtn?.addEventListener('click', closeAddSheet);
