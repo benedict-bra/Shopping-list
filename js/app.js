@@ -2932,36 +2932,38 @@ function renderSheetSuggestions(query) {
 
   const q = query.trim().toLowerCase();
 
-  // Build candidate list — merge history with current list items so
-  // checked items (in trolley) always appear even if not in history
-  const currentItemNames = new Set(state.items.map(i => i.name.toLowerCase()));
-  const currentItemCandidates = state.items.map(i => ({
-    name: i.name,
-    categoryId: i.categoryId,
-    lastUsed: i.addedAt?.seconds ? i.addedAt.seconds * 1000 : Date.now(),
-  }));
-
-  // Merge: start with current list items, then add history items not already present
-  const merged = [...currentItemCandidates];
-  Object.values(_sheetHistory).forEach(h => {
-    if (!currentItemNames.has(h.name.toLowerCase())) {
-      merged.push(h);
-    }
-  });
-
-  let candidates = merged.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
-
-  if (q) {
-    candidates = candidates.filter(c => c.name.toLowerCase().includes(q));
+  // When query is empty: show recent history only (not the full current list)
+  // When searching: merge current list items + history for complete results
+  let candidates;
+  if (!q) {
+    candidates = Object.values(_sheetHistory)
+      .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0))
+      .slice(0, 12);
+  } else {
+    // Merge current list items + history, deduplicated by name
+    const currentItemNames = new Set(state.items.map(i => i.name.toLowerCase()));
+    const currentItemCandidates = state.items.map(i => ({
+      name: i.name,
+      categoryId: i.categoryId,
+      lastUsed: i.addedAt?.seconds ? i.addedAt.seconds * 1000 : Date.now(),
+    }));
+    const merged = [...currentItemCandidates];
+    Object.values(_sheetHistory).forEach(h => {
+      if (!currentItemNames.has(h.name.toLowerCase())) merged.push(h);
+    });
+    candidates = merged
+      .filter(c => c.name.toLowerCase().includes(q))
+      .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0))
+      .slice(0, 20);
   }
-
-  candidates = candidates.slice(0, 20);
 
   let html = '';
 
-  // If typed something not in history, show "Add X" row at top
-  const exactMatch = candidates.find(c => c.name.toLowerCase() === q);
-  if (q && !exactMatch) {
+  // No matches — show "Add X" option
+  if (candidates.length === 0 && !q) {
+    html += `<p style="padding:20px 16px;color:var(--text-muted);font-size:13px;">
+      Start typing to add an item.</p>`;
+  } else if (candidates.length === 0 && q) {
     html += `
       <div class="add-sheet-row" data-action="add-new" data-name="${escapeHtml(query)}">
         <div class="add-sheet-row-icon">
@@ -2973,13 +2975,21 @@ function renderSheetSuggestions(query) {
       </div>`;
   }
 
-  if (candidates.length === 0 && !q) {
-    html += `<p style="padding:20px 16px;color:var(--text-muted);font-size:13px;">
-      Start typing to search your item history.</p>`;
-  }
-
   if (candidates.length > 0) {
-    html += `<div class="add-sheet-section-label">${q ? 'Matches' : 'Recent items'}</div>`;
+    // Show "Add X" at top only if typed something with no exact match
+    const exactMatch = q && candidates.find(c => c.name.toLowerCase() === q);
+    if (q && !exactMatch) {
+      html += `
+        <div class="add-sheet-row" data-action="add-new" data-name="${escapeHtml(query)}">
+          <div class="add-sheet-row-icon">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <div class="add-sheet-row-body">
+            <div class="add-sheet-row-name">Add "<strong>${escapeHtml(query)}</strong>"</div>
+          </div>
+        </div>`;
+    }
+    html += `<div class="add-sheet-section-label">${q ? 'Matches' : 'Recent'}</div>`;
     candidates.forEach(item => {
       // Check status on current list
       const onList = state.items.find(i =>
