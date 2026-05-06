@@ -410,9 +410,13 @@ async function render() {
     : listLabel ? `(${listLabel.slice(3)})` : '';
 
   $('#view-list').style.display = state.view === 'list' ? 'block' : 'none';
-  $('#view-stores').style.display = 'none'; // never visible directly anymore
+  $('#view-stores').style.display = 'none';
   $('#view-recipes').style.display = state.view === 'recipes' ? 'block' : 'none';
   $('#view-settings').style.display = state.view === 'settings' ? 'block' : 'none';
+
+  // FAB only visible on list view (mobile)
+  const fab = document.getElementById('fab-add');
+  if (fab) fab.hidden = state.view !== 'list';
 
   if (state.view === 'list') await renderListView();
   if (state.view === 'recipes') renderRecipesView();
