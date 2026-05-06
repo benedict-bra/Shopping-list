@@ -25,6 +25,9 @@
   --danger: #e05c5c;
   --radius: 8px;
   --radius-lg: 12px;
+  --primary: #2a9d8f;
+  --primary-dark: #21867a;
+  --primary-text: #ffffff;
 }
 
 /* System light mode preference */
@@ -562,6 +565,7 @@ input, select, textarea { font: inherit; color: inherit; }
   cursor: not-allowed;
 }
 
+.omnibar-add-inline:not(:disabled) { background: var(--primary); color: var(--primary-text); border-radius: 6px; }
 .omnibar-add-inline:not(:disabled):hover {
   opacity: 0.85;
 }
@@ -573,11 +577,16 @@ input, select, textarea { font: inherit; color: inherit; }
   padding: 10px 16px;
   border: none;
   border-radius: var(--radius);
-  background: var(--text);
-  color: var(--bg);
+  background: var(--primary);
+  color: var(--primary-text);
   font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
 }
+
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-primary:active { background: var(--primary-dark); }
 
 .btn-secondary {
   padding: 8px 14px;
@@ -689,8 +698,8 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .checkbox.checked {
-  background: var(--text);
-  border-color: var(--text);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .checkbox.checked::after {
@@ -792,7 +801,7 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .toggle-switch input:checked + .toggle-track {
-  background: #2a7a3b;
+  background: var(--primary);
 }
 
 .toggle-switch input:checked + .toggle-track::after {
@@ -2291,15 +2300,15 @@ input, select, textarea { font: inherit; color: inherit; }
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: var(--text);
-  color: var(--bg);
+  background: var(--primary);
+  color: var(--primary-text);
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 60;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 20px rgba(42,157,143,0.4);
   transition: transform 0.15s, opacity 0.15s;
 }
 
@@ -2310,6 +2319,8 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .fab:active { transform: scale(0.92); }
+
+.fab--hidden { display: none !important; }
 
 /* Only show FAB on mobile */
 @media (min-width: 701px) {
@@ -2345,7 +2356,6 @@ input, select, textarea { font: inherit; color: inherit; }
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .add-sheet.open { transform: translateY(0); }
@@ -2428,7 +2438,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .add-sheet-done {
   font-size: 15px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--primary);
   background: transparent;
   border: none;
   cursor: pointer;
