@@ -4,6 +4,7 @@
 import { auth, db } from './firebase.js';
 import {
   GoogleAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -16,8 +17,19 @@ import {
 // ─── Sign in — redirect flow (works on GitHub Pages) ─────────────────────────
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
-  await signInWithRedirect(auth, provider);
-  // Page redirects to Google and back — onAuthStateChanged fires on return
+  try {
+    // Try popup first — works on Android Chrome and avoids storage partition issues
+    const result = await signInWithPopup(auth, provider);
+    await ensureUserProfile(result.user);
+    return result.user;
+  } catch (err) {
+    // Popup blocked (e.g. GitHub Pages COOP header) — fall back to redirect
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+      await signInWithRedirect(auth, provider);
+    } else {
+      throw err;
+    }
+  }
 }
 
 // Call once on page load to process the redirect return
