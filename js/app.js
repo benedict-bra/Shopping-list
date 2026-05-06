@@ -414,9 +414,9 @@ async function render() {
   $('#view-recipes').style.display = state.view === 'recipes' ? 'block' : 'none';
   $('#view-settings').style.display = state.view === 'settings' ? 'block' : 'none';
 
-  // FAB only visible on list view (mobile)
+  // FAB — show on list view, hide on others (use class not hidden attr so CSS media query works)
   const fab = document.getElementById('fab-add');
-  if (fab) fab.hidden = state.view !== 'list';
+  if (fab) fab.classList.toggle('fab--hidden', state.view !== 'list');
 
   if (state.view === 'list') await renderListView();
   if (state.view === 'recipes') renderRecipesView();
@@ -2932,16 +2932,29 @@ function renderSheetSuggestions(query) {
 
   const q = query.trim().toLowerCase();
 
-  // Build candidate list from history
-  let candidates = Object.values(_sheetHistory)
-    .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+  // Build candidate list — merge history with current list items so
+  // checked items (in trolley) always appear even if not in history
+  const currentItemNames = new Set(state.items.map(i => i.name.toLowerCase()));
+  const currentItemCandidates = state.items.map(i => ({
+    name: i.name,
+    categoryId: i.categoryId,
+    lastUsed: i.addedAt?.seconds ? i.addedAt.seconds * 1000 : Date.now(),
+  }));
 
-  // Filter by query if present
+  // Merge: start with current list items, then add history items not already present
+  const merged = [...currentItemCandidates];
+  Object.values(_sheetHistory).forEach(h => {
+    if (!currentItemNames.has(h.name.toLowerCase())) {
+      merged.push(h);
+    }
+  });
+
+  let candidates = merged.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+
   if (q) {
     candidates = candidates.filter(c => c.name.toLowerCase().includes(q));
   }
 
-  // Limit to 20 suggestions
   candidates = candidates.slice(0, 20);
 
   let html = '';
@@ -2975,11 +2988,12 @@ function renderSheetSuggestions(query) {
       const inTrolley = state.items.find(i =>
         i.checked && i.name.toLowerCase() === item.name.toLowerCase()
       );
+      // Skip if item name matches nothing real in state (stale history entry)
+      // but still show it as an addable suggestion
 
-      let badge = '';
       let qty = '';
+      let rowStyle = inTrolley ? 'opacity:0.5;' : '';
       if (onList) {
-        badge = `<span class="add-sheet-row-badge add-sheet-row-badge--on-list">on list</span>`;
         const amt = onList.qtyAmount || 1;
         qty = `
           <div class="add-sheet-qty" data-item-id="${onList.id}">
@@ -2987,14 +3001,13 @@ function renderSheetSuggestions(query) {
             <span class="add-sheet-qty-val">${amt}</span>
             <button class="add-sheet-qty-btn" data-qty-action="inc" data-item-id="${onList.id}" data-current="${amt}">+</button>
           </div>`;
-      } else if (inTrolley) {
-        badge = `<span class="add-sheet-row-badge add-sheet-row-badge--checked">in trolley</span>`;
       }
 
       const catIcon = categoryIconFor(item.categoryId, {});
+      const nameStyle = inTrolley ? 'text-decoration:line-through;' : '';
 
       html += `
-        <div class="add-sheet-row" data-action="${onList ? 'on-list' : inTrolley ? 'uncheck' : 'add'}"
+        <div class="add-sheet-row" style="${rowStyle}" data-action="${onList ? 'on-list' : inTrolley ? 'uncheck' : 'add'}"
           data-name="${escapeHtml(item.name)}"
           data-cat="${escapeHtml(item.categoryId || 'other')}"
           data-item-id="${onList?.id || inTrolley?.id || ''}">
@@ -3002,10 +3015,9 @@ function renderSheetSuggestions(query) {
             ${catIcon}
           </div>
           <div class="add-sheet-row-body">
-            <div class="add-sheet-row-name">${escapeHtml(item.name)}</div>
+            <div class="add-sheet-row-name" style="${nameStyle}">${escapeHtml(item.name)}</div>
             ${qty}
           </div>
-          ${badge}
         </div>`;
     });
   }
