@@ -576,11 +576,29 @@ function openListIconModal(existingList) {
         <div style="font-size:14px;">Aisle order</div>
         <div style="font-size:11px;color:var(--text-muted);">Group items by category</div>
       </div>
-      <label class="toggle-switch" style="flex-shrink:0;">
-        <input type="checkbox" id="nl-custom-order" />
-        <span class="toggle-track"></span>
+      <label class="toggle-switch" style="width:44px;height:26px;flex-shrink:0;display:block;position:relative;cursor:pointer;">
+        <input type="checkbox" id="nl-custom-order" style="position:absolute;opacity:0;width:0;height:0;" />
+        <span style="display:block;width:44px;height:26px;background:#bbb;border-radius:13px;position:relative;transition:background 0.2s;" id="nl-toggle-track">
+          <span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);transition:transform 0.2s;" id="nl-toggle-thumb"></span>
+        </span>
       </label>`;
-    document.getElementById('nl-custom-order').checked = isChecked;
+    const checkbox = document.getElementById('nl-custom-order');
+    const track = document.getElementById('nl-toggle-track');
+    const thumb = document.getElementById('nl-toggle-thumb');
+
+    function updateToggleVisual() {
+      if (checkbox.checked) {
+        track.style.background = '#2a9d8f';
+        thumb.style.transform = 'translateX(18px)';
+      } else {
+        track.style.background = '#bbb';
+        thumb.style.transform = 'translateX(0)';
+      }
+    }
+
+    checkbox.checked = isChecked;
+    updateToggleVisual();
+    checkbox.addEventListener('change', updateToggleVisual);
   }
 
   // Live preview helper
