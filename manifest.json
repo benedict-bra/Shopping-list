@@ -1,0 +1,22 @@
+{
+  "name": "Shopping List",
+  "short_name": "Shopping",
+  "description": "A shared shopping list app",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%231a1a1a' rx='24'/%3E%3Cpath d='M56 60 L56 140 M56 60 L44 60 L44 88 C44 100 56 106 56 106 M84 60 L84 140 M84 60 L108 60 L108 88 C108 100 96 106 84 106 L84 140' stroke='%23f0ede8' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%231a1a1a' rx='64'/%3E%3Cpath d='M148 160 L148 372 M148 160 L116 160 L116 234 C116 266 148 282 148 282 M224 160 L224 372 M224 160 L288 160 L288 234 C288 266 256 282 224 282 L224 372' stroke='%23f0ede8' stroke-width='26' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
