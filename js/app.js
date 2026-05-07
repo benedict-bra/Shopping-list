@@ -535,7 +535,7 @@ function openListIconModal(existingList) {
           <div style="font-size:11px;color:var(--text-muted);">Group items by category</div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="nl-custom-order" ${isEdit ? (existingList.customOrder !== false ? 'checked' : '') : 'checked'} />
+          <input type="checkbox" id="nl-custom-order" ${(isEdit ? existingList.customOrder !== false : true) ? 'checked' : ''} />
           <span class="toggle-track"></span>
         </label>
       </div>
@@ -574,6 +574,12 @@ function openListIconModal(existingList) {
       </div>
     </div>`;
   document.body.appendChild(modal);
+
+  // Set aisle order toggle checked state
+  const customOrderInput = document.getElementById('nl-custom-order');
+  if (customOrderInput) {
+    customOrderInput.checked = isEdit ? existingList.customOrder !== false : true;
+  }
 
   // Live preview helper
   function updatePreview() {
