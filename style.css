@@ -1,0 +1,2580 @@
+/* ============================================================================
+   RESET & BASE
+   ============================================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Default: dark mode */
+  --bg: #1a1a1a;
+  --bg-alt: #232323;
+  --bg-tint: #1f1f1f;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --text: #f0ede8;
+  --text-muted: #9a9790;
+  --text-faint: #707070;
+  --accent: #f0ede8;
+  --green-bg: #0d3326;
+  --green-text: #6fcf97;
+  --blue-bg: #0c2440;
+  --blue-text: #7eb8f7;
+  --pink-bg: #3d1a26;
+  --pink-text: #f4a0c0;
+  --amber-bg: #3d2a00;
+  --amber-text: #fac06a;
+  --danger: #e05c5c;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --primary: #2a9d8f;
+  --primary-dark: #21867a;
+  --primary-text: #ffffff;
+}
+
+/* System light mode preference */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #ffffff;
+    --bg-alt: #f7f7f5;
+    --bg-tint: #fafaf8;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.15);
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-faint: #9a9a9a;
+    --accent: #1a1a1a;
+    --green-bg: #e1f5ee;
+    --green-text: #085041;
+    --blue-bg: #e6f1fb;
+    --blue-text: #0c447c;
+    --pink-bg: #fbeaf0;
+    --pink-text: #72243e;
+    --amber-bg: #faeeda;
+    --amber-text: #854f0b;
+    --danger: #a32d2d;
+  }
+}
+
+/* Forced light mode */
+[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-alt: #f7f7f5;
+  --bg-tint: #fafaf8;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.15);
+  --text: #1a1a1a;
+  --text-muted: #6b6b6b;
+  --text-faint: #9a9a9a;
+  --accent: #1a1a1a;
+  --green-bg: #e1f5ee;
+  --green-text: #085041;
+  --blue-bg: #e6f1fb;
+  --blue-text: #0c447c;
+  --pink-bg: #fbeaf0;
+  --pink-text: #72243e;
+  --amber-bg: #faeeda;
+  --amber-text: #854f0b;
+  --danger: #a32d2d;
+}
+
+/* Forced dark mode */
+[data-theme="dark"] {
+  --bg: #1a1a1a;
+  --bg-alt: #232323;
+  --bg-tint: #1f1f1f;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --text: #f0ede8;
+  --text-muted: #9a9790;
+  --text-faint: #707070;
+  --accent: #f0ede8;
+  --green-bg: #0d3326;
+  --green-text: #6fcf97;
+  --blue-bg: #0c2440;
+  --blue-text: #7eb8f7;
+  --pink-bg: #3d1a26;
+  --pink-text: #f4a0c0;
+  --amber-bg: #3d2a00;
+  --amber-text: #fac06a;
+  --danger: #e05c5c;
+}
+
+
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 80px;
+}
+
+button { font: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; color: inherit; }
+
+/* ============================================================================
+   LAYOUT
+   ============================================================================ */
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0 1rem;
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ============================================================================
+   USER & STORE SELECTORS
+   ============================================================================ */
+.user-toggle, .store-selector {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg-alt);
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+  font-size: 13px;
+}
+
+.user-toggle button, .store-selector button {
+  flex: 1;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-toggle button.active, .store-selector button.active {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================================================
+   TABS (top — visible on tablet/desktop)
+   ============================================================================ */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--text);
+  font-weight: 500;
+}
+
+.tab .count {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ============================================================================
+   BOTTOM NAV (visible on phone screens)
+   ============================================================================ */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  border-top: 0.5px solid var(--border);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  justify-content: space-around;
+}
+
+.bottom-nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.bottom-nav-tab:hover { background: var(--bg-alt); }
+
+.bottom-nav-tab.active {
+  color: var(--text);
+}
+
+.bottom-nav-tab svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* On phone screens: show bottom nav, hide top tabs, add bottom padding so
+   content isn't hidden behind the nav bar */
+@media (max-width: 700px) {
+  .tabs-top { display: none; }
+  .bottom-nav { display: flex; }
+  body { padding-bottom: 88px; }
+}
+
+/* ============================================================================
+   SETTINGS PAGE
+   ============================================================================ */
+.settings-section {
+  margin-bottom: 1.75rem;
+}
+
+.settings-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.settings-section-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 4px 10px;
+  line-height: 1.5;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  background: var(--bg);
+}
+
+.settings-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-text strong {
+  font-size: 14px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.settings-row-text span {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: block;
+}
+
+.settings-section-faded {
+  opacity: 0.6;
+}
+
+.settings-coming-list {
+  list-style: none;
+  padding: 12px;
+  border: 0.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  margin: 0;
+}
+
+.settings-coming-list li {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 4px 0;
+  line-height: 1.4;
+}
+
+.settings-coming-list li::before {
+  content: "·";
+  color: var(--text-faint);
+  margin-right: 8px;
+}
+
+/* User toggle inside settings — shrink it a touch */
+.settings-section .user-toggle {
+  margin: 0;
+}
+
+/* ============================================================================
+   VERSION FOOTER
+   ============================================================================ */
+.version-footer {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ============================================================================
+   ADD ROW
+   ============================================================================ */
+.add-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.add-row-expanded {
+  display: grid;
+  grid-template-columns: 1fr 90px 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.add-row input,
+.add-row-expanded input,
+.add-row-expanded select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.add-row input:focus,
+.add-row-expanded input:focus,
+.add-row-expanded select:focus {
+  outline: none;
+  border-color: var(--text);
+}
+
+/* ============================================================================
+   OMNIBAR — combined add / find input (replaces .add-row in v0.10.0+)
+   ============================================================================ */
+.omnibar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.omnibar-stack {
+  flex: 1;
+  min-width: 0;
+}
+
+.omnibar-input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg-alt);
+  border: 0.5px solid transparent;
+  border-radius: var(--radius);
+  padding: 0 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.omnibar-input-wrap:focus-within {
+  background: var(--bg);
+  border-color: var(--border-strong);
+}
+
+.omnibar-icon {
+  width: 16px;
+  height: 16px;
+  stroke: var(--text-muted);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+#omnibar-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 11px 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  min-width: 0;
+}
+
+#omnibar-input:focus { outline: none; }
+
+#omnibar-input::placeholder { color: var(--text-muted); }
+
+.omnibar-clear {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-faint);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.omnibar-clear:hover { background: var(--border); color: var(--text); }
+
+.omnibar-clear svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.omnibar-filter {
+  width: 40px;
+  height: 40px;
+  border: 0.5px solid var(--border-strong);
+  background: var(--bg);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0;
+  flex-shrink: 0;
+  position: relative;
+  gap: 6px;
+}
+
+.omnibar-filter:hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+.omnibar-filter.active {
+  width: auto;
+  padding: 0 12px 0 10px;
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.omnibar-filter svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.omnibar-filter-label {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   OMNIBAR PANEL — slides down on focus, contains add suggestion + details
+   ============================================================================ */
+.omnibar-panel {
+  /* Panel kept in DOM for the hidden #new-cat select; no visible content */
+  display: none;
+}
+
+/* Inline + button inside the omnibar input */
+.omnibar-add-inline {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.omnibar-add-inline svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.omnibar-add-inline:disabled {
+  background: var(--border);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+.omnibar-add-inline:not(:disabled) { background: var(--primary); color: var(--primary-text); border-radius: 6px; }
+.omnibar-add-inline:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+.omnibar-details-toggle { display: none; }
+.omnibar-details { display: none; }
+
+.btn-primary {
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--primary-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-primary:active { background: var(--primary-dark); }
+
+.btn-secondary {
+  padding: 8px 14px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.btn-secondary:hover { background: var(--bg-alt); }
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-icon:hover { background: var(--bg-alt); color: var(--text); }
+
+.btn-danger { color: var(--danger); }
+
+/* ============================================================================
+   CATEGORY GROUPS
+   ============================================================================ */
+.category-group {
+  margin-bottom: 1.25rem;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.category-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-faint);
+}
+
+.category-reorder {
+  display: flex;
+  gap: 2px;
+}
+
+.category-reorder button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.category-reorder button:hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+/* ============================================================================
+   SHOPPING ITEMS
+   ============================================================================ */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  border-bottom: 0.5px solid var(--border);
+  transition: background 0.15s;
+}
+
+.item:last-child { border-bottom: none; }
+
+.item:hover { background: var(--bg-alt); }
+
+.item.checked .item-name {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+
+.item.checked .item-qty,
+.item.checked .item-meta { color: var(--text-faint); }
+
+.checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.checkbox.checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.checkbox.checked::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid var(--bg);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.item-name { font-size: 15px; font-weight: 500; }
+.item-qty { font-size: 13px; color: var(--text-muted); }
+.item-note { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+/* Compact icon-only category indicator on slim list rows */
+.cat-icon-btn {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  background: var(--cat-text);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.12s, opacity 0.12s;
+}
+
+.cat-icon-btn:hover { opacity: 0.85; }
+
+.cat-icon-btn .cat-pill-icon {
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  line-height: 0;
+}
+
+.cat-icon-btn .cat-pill-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Toggle switch ─────────────────────────────────────────────────────────── */
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-track {
+  width: 44px;
+  height: 24px;
+  background: var(--border-strong);
+  border-radius: 12px;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-track {
+  background: var(--primary);
+}
+
+.toggle-switch input:checked + .toggle-track::after {
+  transform: translateX(20px);
+}
+
+/* ── Store pills on item rows ──────────────────────────────────────────────── */
+.item-store-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.item-store-pill {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-faint, #707070);
+  border: 0.5px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ── Multi-select store picker ─────────────────────────────────────────────── */
+.store-picker--multi .store-picker-row--clear {
+  border-top: 0.5px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.store-picker--multi .store-picker-row--clear:hover {
+  color: var(--text);
+}
+
+
+.icon-grid--fixed {
+  height: 200px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* List preview row in modal */
+.list-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 6px;
+}
+
+.list-preview-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.list-preview-dot svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.list-preview-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Small secondary button variant */
+.btn-sm {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+}
+
+/* List icon modal — maintain stable height */
+.list-icon-modal {
+  min-height: 520px;
+}
+
+
+.list-settings-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Icon search in modal */
+.icon-search-wrap {
+  margin-bottom: 8px;
+}
+
+.icon-search-wrap input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.icon-search-wrap input:focus {
+  outline: none;
+  border-color: var(--text);
+}
+
+/* Settings explanatory hint text */
+.store-name-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  font-size: 14px;
+  color: var(--text);
+  padding: 2px 0;
+  transition: border-color 0.12s;
+}
+
+.store-name-input:focus {
+  outline: none;
+  border-bottom-color: var(--border-strong);
+}
+
+
+.settings-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+/* Store card with footer add button */
+.store-card-footer {
+  padding: 10px 14px;
+  border-top: 0.5px solid var(--border);
+}
+
+
+.modal-actions-with-delete { align-items: center; }
+.modal-actions-spacer { flex: 1; }
+
+.btn-icon-danger {
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: transparent;
+  border: 0.5px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-icon-danger:hover {
+  background: var(--bg-alt);
+  color: #c4453d;
+  border-color: #c4453d;
+}
+
+.btn-icon-danger svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.added-by {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.added-by.me { background: var(--blue-bg); color: var(--blue-text); }
+.added-by.her { background: var(--pink-bg); color: var(--pink-text); }
+
+.store-tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--bg-alt);
+  color: var(--text-muted);
+}
+
+.price-tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--green-bg);
+  color: var(--green-text);
+  font-weight: 500;
+}
+
+.item-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.item-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   EMPTY STATES
+   ============================================================================ */
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+.empty p { margin-bottom: 0.75rem; }
+
+/* ============================================================================
+   STORES TAB
+   ============================================================================ */
+.store-card {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--bg);
+}
+
+.store-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.store-card-name { font-size: 16px; font-weight: 500; }
+
+.aisle-list { list-style: none; }
+
+.aisle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  font-size: 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.aisle-row:last-child { border-bottom: none; }
+
+.aisle-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-alt);
+  color: var(--text-muted);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.aisle-name { flex: 1; }
+
+.aisle-controls { display: flex; gap: 2px; }
+
+/* ============================================================================
+   RECIPES TAB
+   ============================================================================ */
+/* ============================================================================
+   LIST SELECTOR — horizontal pill tabs above the omnibar
+   ============================================================================ */
+.list-selector {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 10px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.list-selector::-webkit-scrollbar { display: none; }
+
+.list-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 20px;
+  background: var(--bg);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.list-tab.active {
+  background: var(--list-col, var(--text));
+  color: #fff;
+  border-color: var(--list-col, var(--text));
+}
+
+.list-tab:not(.active):hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+.list-tab-icon {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.list-tab-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.list-tab-name  { font-size: 13px; }
+
+.list-tab-add {
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 6px 10px;
+}
+
+/* Emoji picker in new-list modal */
+.emoji-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.emoji-btn {
+  font-size: 20px;
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  background: var(--bg-alt);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s;
+}
+.emoji-btn.selected {
+  border-color: var(--text);
+  background: var(--bg);
+}
+
+/* ============================================================================
+   RECIPE CARDS — with thumbnail
+   ============================================================================ */
+.recipe-card {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.recipe-card-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+.recipe-thumb {
+  width: 100%;
+  height: 140px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg-alt);
+  flex-shrink: 0;
+}
+
+.recipe-thumb--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  background: var(--bg-alt);
+}
+
+.recipe-thumb--placeholder svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--border-strong);
+}
+
+.recipe-card-body {
+  padding: 0.875rem;
+}
+
+.recipe-source-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--blue-bg);
+  color: var(--blue-text);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.recipe-source-banner:hover { opacity: 0.85; }
+
+.recipe-source-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.recipe-source-domain {
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.recipe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.recipe-name { font-size: 15px; font-weight: 500; }
+
+.recipe-source {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.recipe-source a { color: var(--blue-text); }
+
+.recipe-ingredients {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--border);
+}
+
+.recipe-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+.import-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.import-form input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.import-status {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.import-status.loading { background: var(--blue-bg); color: var(--blue-text); }
+.import-status.error { background: var(--pink-bg); color: var(--pink-text); }
+.import-status.success { background: var(--green-bg); color: var(--green-text); }
+
+/* ============================================================================
+   MODAL
+   ============================================================================ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+  padding: 0;
+}
+
+@media (min-width: 600px) {
+  .modal-backdrop { align-items: center; padding: 1rem; }
+}
+
+.modal {
+  background: var(--bg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 600px) {
+  .modal { border-radius: var(--radius-lg); }
+}
+
+.modal h3 { font-size: 16px; font-weight: 500; margin-bottom: 1rem; }
+
+.modal-row { margin-bottom: 0.75rem; }
+
+.modal-row label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.modal-row input,
+.modal-row select,
+.modal-row textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.modal-row textarea { resize: vertical; min-height: 60px; }
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.checkbox-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.checkbox-group label.checked {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.checkbox-group input { display: none; }
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 0.5px solid var(--border);
+}
+
+/* ============================================================================
+   CATEGORY BADGE — coloured rounded square with Lucide icon
+   ============================================================================ */
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--cat-bg);
+  color: var(--cat-text);
+  flex-shrink: 0;
+}
+
+
+
+.cat-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-badge-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.category-header .cat-badge { width: 24px; height: 24px; }
+.category-header .cat-badge-icon { width: 14px; height: 14px; }
+
+.category-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  text-transform: none;
+}
+
+/* ============================================================================
+   TOAST — ephemeral message at bottom of screen
+   ============================================================================ */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 18px;
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 200;
+  max-width: 90vw;
+  text-align: center;
+}
+
+#toast-container.toast-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ============================================================================
+   ESTIMATED TOTAL — subtle line under active items
+   ============================================================================ */
+.estimated-total {
+  text-align: center;
+  padding: 16px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  margin: 12px 0 0;
+}
+
+.estimated-total strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.estimated-total-empty {
+  color: var(--text-faint);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* ============================================================================
+   CHECKED ITEMS SECTION — collapsible, sits under estimated total
+   ============================================================================ */
+.checked-section {
+  margin-top: 12px;
+}
+
+.checked-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background 0.12s;
+}
+
+.checked-toggle:hover { background: var(--bg-alt); }
+
+.checked-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.18s ease;
+}
+
+.checked-section.expanded .checked-chevron {
+  transform: rotate(90deg);
+}
+
+.checked-items {
+  display: none;
+  padding-top: 4px;
+}
+
+.checked-section.expanded .checked-items {
+  display: block;
+}
+
+/* Greyed-out checked items in the section */
+.checked-items .item {
+  opacity: 0.55;
+}
+
+.checked-items .item:hover {
+  opacity: 0.85;
+  background: var(--bg-alt);
+}
+
+/* ============================================================================
+   PRICE-ENTRY ROW (in edit modal — single price per item)
+   ============================================================================ */
+/* Quantity amount + unit selector grid in edit modal */
+.qty-grid {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 8px;
+  overflow: visible;
+  position: relative;
+}
+
+.qty-grid select {
+  position: relative;
+  z-index: 10;
+}
+
+.price-row-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.price-row-input input[type="number"] {
+  width: 100px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.price-row-input select {
+  padding: 8px 10px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.price-currency, .price-per {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ============================================================================
+   STORE CHIPS — appear on every list item, tappable to open dropdown
+   ============================================================================ */
+.item-tags {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.item-tags-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.item-tags-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Category pill — coloured rounded pill with icon + name, tappable */
+.cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--cat-bg);
+  color: var(--cat-text);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.12s, transform 0.06s;
+  white-space: nowrap;
+}
+
+.cat-pill:hover { opacity: 0.85; }
+.cat-pill:active { transform: scale(0.97); }
+
+
+
+.cat-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+}
+
+.cat-pill-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cat-pill-name {
+  line-height: 1;
+}
+
+/* Store chip — outlined neutral pill */
+.store-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-muted);
+  border: 0.5px solid var(--border-strong);
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.store-chip:hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+.store-chip.add-chip {
+  padding: 3px 8px;
+  color: var(--text-faint);
+  border-style: dashed;
+}
+
+.store-chip.empty-chip {
+  color: var(--text-faint);
+  font-style: italic;
+  font-weight: 400;
+  border-style: dashed;
+}
+
+/* Price tag on list rows */
+.item-price-tag {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.item-price-tag--set {
+  color: var(--text-faint);
+}
+
+.item-price-tag--unset {
+  display: none;
+}
+
+.item.checked .item-price-tag--unset {
+  display: none;
+}
+
+/* Price — minimal, no pill, just a number */
+.item-price {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* User pip — soft pastel pill, smaller than store chips */
+.user-pip {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.2px;
+}
+
+.user-pip.me { background: var(--blue-bg); color: var(--blue-text); }
+.user-pip.her { background: var(--pink-bg); color: var(--pink-text); }
+
+/* Cat picker popover row tweak — slightly more padding for the badge */
+.cat-picker-row {
+  padding: 8px 10px;
+}
+
+/* Hide legacy item-meta block (no longer used in renderItem) */
+.item-meta { display: none; }
+
+/* ============================================================================
+   STORE-PICKER DROPDOWN (popover anchored to a chip)
+   ============================================================================ */
+.store-picker {
+  position: absolute;
+  z-index: 50;
+  background: var(--bg);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 180px;
+  padding: 4px;
+}
+
+.store-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.store-picker-row:hover { background: var(--bg-alt); }
+
+.store-picker-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-strong);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.store-picker-check.checked {
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.store-picker-check.checked::after {
+  content: "";
+  width: 4px;
+  height: 7px;
+  border: solid var(--bg);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.store-picker-divider {
+  height: 0.5px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.store-picker-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ============================================================================
+   STORES TAB — drag handle and inline-edit
+   ============================================================================ */
+.aisle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  font-size: 14px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--bg);
+  border-radius: 4px;
+  transition: background 0.12s, transform 0.12s;
+}
+
+.aisle-row:last-child { border-bottom: none; }
+
+.aisle-row.dragging {
+  opacity: 0.4;
+}
+
+.aisle-row.drag-over-top {
+  border-top: 2px solid var(--blue-text);
+}
+
+.aisle-row.drag-over-bottom {
+  border-bottom: 2px solid var(--blue-text);
+}
+
+/* Item drag states (in shopping list) */
+.item.dragging {
+  opacity: 0.4;
+}
+
+.item.drag-over-top {
+  box-shadow: inset 0 2px 0 0 var(--blue-text);
+}
+
+.item.drag-over-bottom {
+  box-shadow: inset 0 -2px 0 0 var(--blue-text);
+}
+
+.item-drag-handle {
+  cursor: grab;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  touch-action: none;
+  border-radius: var(--radius);
+}
+
+.item-drag-handle:hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+.item-drag-handle:active { cursor: grabbing; }
+
+.item-drag-handle svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+.drag-handle:active { cursor: grabbing; }
+
+.drag-handle svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+.aisle-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.aisle-name-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.aisle-name-input:focus {
+  outline: none;
+  background: var(--bg-alt);
+}
+
+.aisle-controls {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Override the old up/down button styles since we removed them */
+.aisle-num { display: none; }
+
+/* ============================================================================
+   ICON & COLOUR PICKER
+   ============================================================================ */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.icon-grid-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.12s;
+}
+
+.icon-grid-cell:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.icon-grid-cell.selected {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.icon-grid-cell svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.colour-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 6px;
+}
+
+.colour-swatch {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 0.5px solid var(--border);
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.colour-swatch:hover { transform: scale(1.08); }
+
+.colour-swatch.selected {
+  border: 2px solid var(--text);
+}
+
+.colour-swatch-dot {
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+}
+
+.colour-swatch.selected .colour-swatch-dot {
+  width: 60%;
+  height: 60%;
+}
+
+/* ============================================================================
+   IMPORT EDITOR (after recipe import — for cleanup, not selection)
+   ============================================================================ */
+.editor-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 8px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.editor-row:last-child { border-bottom: none; }
+
+.editor-fields { flex: 1; min-width: 0; }
+
+.editor-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.editor-name-row .cat-pill {
+  flex-shrink: 0;
+}
+
+.editor-name {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0.5px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.editor-meta-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.editor-qty, .editor-note {
+  padding: 5px 8px;
+  border: 0.5px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  font-size: 12px;
+}
+
+.editor-qty:focus, .editor-note:focus, .editor-name:focus {
+  outline: none;
+  border-color: var(--text);
+}
+
+.picker-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.picker-original {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.picker-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.picker-count { color: var(--text-muted); }
+
+.picker-meta-tag {
+  background: var(--bg-alt);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.picker-meta-tag.qty { background: var(--blue-bg); color: var(--blue-text); }
+
+/* ============================================================================
+   RECIPE VIEW MODAL — per-ingredient Add buttons with greyed-out state
+   ============================================================================ */
+.recipe-ingredient-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px;
+  border-bottom: 0.5px solid var(--border);
+  transition: opacity 0.2s;
+}
+
+.recipe-ingredient-row:last-child { border-bottom: none; }
+
+.recipe-ingredient-row.added {
+  opacity: 0.45;
+}
+
+.recipe-ingredient-content { flex: 1; min-width: 0; }
+
+.recipe-ingredient-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.recipe-ingredient-meta {
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-add-ingredient {
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  flex-shrink: 0;
+}
+
+.recipe-added-label {
+  font-size: 12px;
+  color: var(--green-text);
+  background: var(--green-bg);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   FOOTER
+   ============================================================================ */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 0.5px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   PHOTO PREVIEW IN MODAL
+   ============================================================================ */
+.photo-preview {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-top: 6px;
+}
+
+.photo-controls { display: flex; gap: 6px; margin-top: 6px; }
+
+/* ============================================================================
+   ICON SVGs
+   ============================================================================ */
+.icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── Added-by label on item rows ─────────────────────────────────────────── */
+.item-added-by {
+  font-size: 10px;
+  color: var(--text-faint, #707070);
+  margin-top: 2px;
+  display: block;
+}
+
+/* ── List tab join button ────────────────────────────────────────────────── */
+.list-tab-join {
+  color: var(--text-muted);
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+
+/* Sign-in screen */
+.signin-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  gap: 1.5rem;
+}
+
+/* hidden attribute must override display — !important needed when
+   element has a display value set via class */
+[hidden] {
+  display: none !important;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Theme toggle ────────────────────────────────────────────────────────── */
+.theme-toggle {
+  display: flex;
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.theme-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.theme-btn:not(:last-child) {
+  border-right: 0.5px solid var(--border-strong);
+}
+
+.theme-btn.active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* ============================================================================
+   FLOATING ADD BUTTON (FAB)
+   ============================================================================ */
+.fab {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  right: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-text);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  box-shadow: 0 4px 20px rgba(42,157,143,0.4);
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.fab svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+}
+
+.fab:active { transform: scale(0.92); }
+
+.fab--hidden { display: none !important; }
+
+/* Only show FAB on mobile */
+@media (min-width: 701px) {
+  .fab { display: none !important; }
+}
+
+/* ============================================================================
+   BOTTOM SHEET
+   ============================================================================ */
+.add-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 70;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.add-sheet-backdrop.open { opacity: 1; }
+
+.add-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  border-top: 0.5px solid var(--border-strong);
+  z-index: 80;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.add-sheet.open { transform: translateY(0); }
+
+.add-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: 2px;
+  margin: 10px auto 6px;
+  flex-shrink: 0;
+}
+
+.add-sheet-inner {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.add-sheet-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 10px;
+  flex-shrink: 0;
+}
+
+.add-sheet-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bg-alt);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 0 10px;
+  gap: 8px;
+  height: 42px;
+}
+
+.add-sheet-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+#add-sheet-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  min-width: 0;
+}
+
+#add-sheet-input::placeholder { color: var(--text-muted); }
+
+.add-sheet-clear {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.add-sheet-clear svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.add-sheet-done {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 4px;
+  flex-shrink: 0;
+}
+
+.add-sheet-suggestions {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 0 8px;
+}
+
+.add-sheet-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 10px 16px 4px;
+}
+
+.add-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.add-sheet-row:active { background: var(--bg-alt); }
+
+.add-sheet-row-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.add-sheet-row-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.add-sheet-row-body { flex: 1; min-width: 0; }
+
+.add-sheet-row-name {
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.add-sheet-row-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.add-sheet-row-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.add-sheet-row-badge--on-list {
+  background: var(--green-bg);
+  color: var(--green-text);
+}
+
+.add-sheet-row-badge--checked {
+  background: var(--bg-alt);
+  color: var(--text-muted);
+}
+
+/* Inline quantity adjuster for on-list items */
+.add-sheet-qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.add-sheet-qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.add-sheet-qty-val {
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Recently added section at bottom */
+.add-sheet-recent {
+  flex-shrink: 0;
+  border-top: 0.5px solid var(--border);
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Item highlight when tapped from sheet */
+@keyframes item-flash {
+  0%   { background: var(--bg-alt); }
+  50%  { background: var(--amber-bg); }
+  100% { background: transparent; }
+}
+
+.item-highlight {
+  animation: item-flash 1.5s ease-out forwards;
+}
