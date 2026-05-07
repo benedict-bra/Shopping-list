@@ -1355,7 +1355,6 @@ input, select, textarea { font: inherit; color: inherit; }
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
-  overflow-x: hidden;
 }
 
 @media (min-width: 600px) {
