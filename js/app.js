@@ -129,7 +129,7 @@ function categoryName(id) {
 // ($/kg, $/L) only apply if the user sets a structured qty in those units.
 // -----------------------------------------------------------------------------
 async function estimateItemCost(item) {
-  const price = await data.getPrice(state.currentUid, item.name);
+  const price = await data.getPrice(state.activeListId, item.name);
   if (!price) return null;
 
   const effectiveAmount = item.qtyAmount || 1;
@@ -213,15 +213,7 @@ async function onSignedIn(user) {
   teardownListeners();
 
   // Start real-time listeners
-  state._unsubCats = data.listenToCategories(user.uid, (cats) => {
-    state.categories = cats;
-    if (state.view === 'list' || state.view === 'settings') render();
-  });
-
-  state._unsubStores = data.listenToStores(user.uid, (stores) => {
-    state.stores = stores;
-    if (state.view === 'list' || state.view === 'settings') render();
-  });
+  // Categories and stores are per-list — started in subscribeToActiveListItems
 
   // Recipes listener
   state._unsubRecipes = data.listenToRecipes(user.uid, (recipes) => {
@@ -253,6 +245,9 @@ async function onSignedIn(user) {
     subscribeToActiveListItems();
     render();
   });
+
+  // Run migration if needed
+  await data.migrateToPerListData(user.uid);
 
   // Load display settings
   state.displaySettings = await data.getDisplaySettings(user.uid);
@@ -300,12 +295,28 @@ function teardownListeners() {
 
 function subscribeToActiveListItems() {
   if (state._unsubItems) { state._unsubItems(); state._unsubItems = null; }
+  if (state._unsubCats)  { state._unsubCats();  state._unsubCats  = null; }
+  if (state._unsubStores){ state._unsubStores(); state._unsubStores = null; }
   if (!state.activeListId) return;
-  // Clear immediately so old list items don't flash while new list loads
+
+  // Clear immediately so old list items don't flash
   state.items = [];
+  state.categories = [];
+  state.stores = [];
+
   state._unsubItems = data.listenToItems(state.activeListId, (items) => {
     state.items = items;
     if (state.view === 'list') renderItemList();
+  });
+
+  state._unsubCats = data.listenToListCategories(state.activeListId, (cats) => {
+    state.categories = cats;
+    if (state.view === 'list' || state.view === 'settings') render();
+  });
+
+  state._unsubStores = data.listenToListStores(state.activeListId, (stores) => {
+    state.stores = stores;
+    if (state.view === 'list' || state.view === 'settings') render();
   });
 }
 
@@ -518,6 +529,17 @@ function openListIconModal(existingList) {
         <span id="nl-preview-name" class="list-preview-name">${escapeHtml(existingList?.name || 'New list')}</span>
       </div>
 
+      <div class="modal-row" style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:14px;">Aisle order</div>
+          <div style="font-size:11px;color:var(--text-muted);">Group items by category</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="nl-custom-order" ${isEdit ? (existingList.customOrder !== false ? 'checked' : '') : 'checked'} />
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
       <div class="modal-row">
         <label>Colour</label>
         <div class="colour-grid">
@@ -645,17 +667,24 @@ function openListIconModal(existingList) {
     if (!name) { nameInput?.focus(); return; }
 
     if (isEdit) {
-      await data.updateList(existingList.id, { name, icon: chosenIcon, colour: chosenColour });
+      const customOrder = document.getElementById('nl-custom-order')?.checked !== false;
+      await data.updateList(existingList.id, { name, icon: chosenIcon, colour: chosenColour, customOrder });
       modal.remove();
       await reloadAll();
       render();
     } else {
-      const newList = await data.createList(state.currentUid, { name, icon: chosenIcon, colour: chosenColour, displayName: state.currentDisplayName });
+      const customOrder = document.getElementById('nl-custom-order')?.checked !== false;
+      const newList = await data.createList(state.currentUid, { name, icon: chosenIcon, colour: chosenColour, customOrder, displayName: state.currentDisplayName });
       modal.remove();
       await reloadAll();
       state.activeListId = newList.id;
-      await data.setActiveListId(newList.id);
+      subscribeToActiveListItems();
       render();
+      // Auto-open list settings after creation
+      setTimeout(() => {
+        state.view = 'settings';
+        render();
+      }, 400);
     }
   });
 }
@@ -682,8 +711,11 @@ async function renderItemList() {
   const container = $('#items-container');
 
   // Filter items by active list (items without listId belong to 'default')
+  const activeList = state.lists.find(l => l.id === state.activeListId);
   // Items are already scoped to the active list via Firestore subcollection
   let visible = [...state.items];
+  // If custom order is off, sort by addedAt (newest first)
+  const useCustomOrder = activeList?.customOrder !== false;
   if (state.activeStoreIds.length > 0) {
     visible = visible.filter(i => i.storeIds && state.activeStoreIds.some(sid => i.storeIds.includes(sid)));
   if (state.filterAddedBy) {
@@ -713,11 +745,12 @@ async function renderItemList() {
     return;
   }
 
-  // Sort by global category order (the order defined in Settings → Categories).
-  // This IS the aisle order — one consistent order across all stores.
   const catOrder = state.categories.map(c => c.id);
 
   function sortKey(a, b) {
+    if (!useCustomOrder) {
+      return (a.addedAt?.seconds || 0) - (b.addedAt?.seconds || 0);
+    }
     const aIdx = catOrder.indexOf(a.categoryId);
     const bIdx = catOrder.indexOf(b.categoryId);
     const ai = aIdx === -1 ? 999 : aIdx;
@@ -1684,7 +1717,7 @@ function openEditModal(id) {
 
   // Populate last-recorded price — pre-fill both value and unit
   (async () => {
-    const last = await data.getPrice(state.currentUid, item.name);
+    const last = await data.getPrice(state.activeListId, item.name);
     if (last) {
       $('#last-price-hint', modal).textContent =
         `Last recorded: $${last.price.toFixed(2)} per ${unitLabel(last.unit)}`;
@@ -1756,7 +1789,7 @@ function openEditModal(id) {
     const priceVal = $('#edit-price', modal).value.trim();
     const priceUnit = $('#edit-price-unit', modal).value;
     if (priceVal) {
-      await data.setPrice(state.currentUid, newName, priceVal, priceUnit);
+      await data.setPrice(state.activeListId, newName, priceVal, priceUnit);
     }
 
     await data.updateItem(state.activeListId, item.id, {
@@ -1797,10 +1830,13 @@ function renderStoresView(targetContainer) {
   html += `
     <div class="settings-section-label" style="margin-bottom: 8px;">
       Categories
+      <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:6px;">
+        — ${state.lists.find(l => l.id === state.activeListId)?.name || 'current list'}
+      </span>
     </div>
     <p class="settings-hint">
-      Drag to set your aisle order — this order is used on all lists and stores.
-      Tap the colour dot to restyle, tap the name to rename.
+      Drag to set aisle order for this list. Tap the colour dot to restyle.
+      Categories are shared with all members of this list.
     </p>
     <div class="store-card" style="margin-bottom: 1.5rem;">
       <ul class="aisle-list" id="cat-order-list">
@@ -1830,8 +1866,8 @@ function renderStoresView(targetContainer) {
 
     <div class="settings-section-label" style="margin-bottom: 8px;">Stores</div>
     <p class="settings-hint">
-      Stores are tags on items — use the filter to see only items from one store,
-      sorted by the aisle order above.
+      Stores are tags on items for this list — shared with all members.
+      Use the filter to see only items from one store.
     </p>
     <div class="store-card" style="margin-bottom: 0.75rem;">
       <ul class="aisle-list" id="store-list">
@@ -1876,7 +1912,7 @@ function renderStoresView(targetContainer) {
       const newName = input.value.trim();
       const cat = categoryById(input.dataset.catId);
       if (newName && newName !== cat?.name) {
-        await data.updateCategory(state.currentUid, input.dataset.catId, { name: newName });
+        await data.updateCategory(state.activeListId, input.dataset.catId, { name: newName });
         await reloadAll();
         render();
       }
@@ -1902,7 +1938,7 @@ function renderStoresView(targetContainer) {
       const newName = input.value.trim();
       const store = state.stores.find(s => s.id === input.dataset.storeId);
       if (newName && newName !== store?.name) {
-        await data.updateStore(state.currentUid, input.dataset.storeId, { name: newName });
+        await data.updateStore(state.activeListId, input.dataset.storeId, { name: newName });
         await reloadAll();
         render();
       }
@@ -1967,7 +2003,7 @@ function bindCategoryDragAndDrop(container) {
       const insertAt = dropBefore ? toIdx : toIdx + 1;
       order.splice(insertAt, 0, fromCatId);
 
-      await data.reorderCategories(state.currentUid, order);
+      await data.reorderCategories(state.activeListId, order);
       await reloadAll();
       render();
     });
@@ -1978,7 +2014,7 @@ async function promptAddCategory() {
   const name = prompt('New category name:');
   if (!name?.trim()) return;
   const guessed = getCategoryStyle({ name: name.trim() });
-  await data.addCategory(state.currentUid, { name: name.trim(), icon: guessed.icon, colour: guessed.colour });
+  await data.addCategory(state.activeListId, { name: name.trim(), icon: guessed.icon, colour: guessed.colour });
   await reloadAll();
   render();
   const newCat = state.categories[state.categories.length - 1];
@@ -1988,7 +2024,7 @@ async function promptAddCategory() {
 async function promptAddStore() {
   const name = prompt('Store name (e.g. Aldi, Coles, Bunnings):');
   if (!name?.trim()) return;
-  await data.addStore(state.currentUid, name.trim());
+  await data.addStore(state.activeListId, name.trim());
   await reloadAll();
   render();
 }
@@ -2002,7 +2038,7 @@ async function deleteStoreConfirm(id) {
     : `Delete "${store.name}"?`;
   if (!confirm(msg)) return;
   state.activeStoreIds = state.activeStoreIds.filter(sid => sid !== id);
-  await data.deleteStore(state.currentUid, id);
+  await data.deleteStore(state.activeListId, id);
   await reloadAll();
   render();
 }
@@ -2020,7 +2056,7 @@ async function deleteCategoryConfirm(id) {
     ? `Delete "${cat.name}"? ${count} item${count === 1 ? '' : 's'} will move to Other.`
     : `Delete "${cat.name}"?`;
   if (!confirm(msg)) return;
-  await data.deleteCategory(state.currentUid, id);
+  await data.deleteCategory(state.activeListId, id);
   await reloadAll();
   render();
 }
@@ -2127,7 +2163,7 @@ async function openCategoryStyleModal(catId) {
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 
   $('#cs-save', modal).addEventListener('click', async () => {
-    await data.updateCategory(state.currentUid, catId, { icon: selectedIcon, colour: selectedColour });
+    await data.updateCategory(state.activeListId, catId, { icon: selectedIcon, colour: selectedColour });
     modal.remove();
     await reloadAll();
     render();

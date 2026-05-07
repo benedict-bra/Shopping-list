@@ -1,20 +1,20 @@
 // =============================================================================
-// DATA LAYER — Firestore
+// DATA LAYER — Firestore v1.4.0
 // =============================================================================
-// Same public API as the localStorage version so app.js changes are minimal.
-// Phase 2 additions: real-time listeners, list sharing, per-user data.
-//
 // Data structure:
-//   /users/{uid}                     — user profiles
-//   /lists/{listId}                  — list metadata (name, icon, colour, members)
-//   /lists/{listId}/items/{itemId}   — shopping items
-//   /categories/{uid}/cats/{catId}   — per-user categories
-//   /stores/{uid}/stores/{storeId}   — per-user stores
-//   /invites/{code}                  — short-lived list invite codes
+//   /users/{uid}                          — user profiles + display settings
+//   /users/{uid}/prefs/display            — display settings
+//   /users/{uid}/prefs/history            — item add history
+//   /lists/{listId}                       — list metadata
+//   /lists/{listId}/items/{itemId}        — shopping items
+//   /lists/{listId}/categories/{catId}    — per-list categories (NEW)
+//   /lists/{listId}/stores/{storeId}      — per-list stores (NEW)
+//   /lists/{listId}/prices/{key}          — shared prices per list (NEW)
+//   /users/{uid}/recipes/{recipeId}       — recipes (private per user)
+//   /invites/{code}                       — invite codes
 // =============================================================================
 
 import { db } from './firebase.js';
-import { getCurrentUid } from './auth.js';
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc,
   updateDoc, deleteDoc, query, where, orderBy,
@@ -22,22 +22,99 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ─── Collection refs ──────────────────────────────────────────────────────────
-const listRef    = (listId)         => doc(db, 'lists', listId);
-const itemsRef   = (listId)         => collection(db, 'lists', listId, 'items');
-const itemRef    = (listId, itemId) => doc(db, 'lists', listId, 'items', itemId);
-const catsRef    = (uid)            => collection(db, 'categories', uid, 'cats');
-const catRef     = (uid, catId)     => doc(db, 'categories', uid, 'cats', catId);
-const storesRef  = (uid)            => collection(db, 'stores', uid, 'stores');
-const storeRef   = (uid, storeId)   => doc(db, 'stores', uid, 'stores', storeId);
-const displayRef = (uid)            => doc(db, 'users', uid, 'prefs', 'display');
+const listRef      = (listId)              => doc(db, 'lists', listId);
+const itemsRef     = (listId)              => collection(db, 'lists', listId, 'items');
+const itemRef      = (listId, itemId)      => doc(db, 'lists', listId, 'items', itemId);
+const listCatsRef  = (listId)              => collection(db, 'lists', listId, 'categories');
+const listCatRef   = (listId, catId)       => doc(db, 'lists', listId, 'categories', catId);
+const listStrsRef  = (listId)              => collection(db, 'lists', listId, 'stores');
+const listStrRef   = (listId, storeId)     => doc(db, 'lists', listId, 'stores', storeId);
+const listPriceRef = (listId, key)         => doc(db, 'lists', listId, 'prices', key);
+const listPricesRef= (listId)              => collection(db, 'lists', listId, 'prices');
+const displayRef   = (uid)                 => doc(db, 'users', uid, 'prefs', 'display');
+
+// Legacy refs — used only during migration
+const legacyCatsRef  = (uid) => collection(db, 'categories', uid, 'cats');
+const legacyStrsRef  = (uid) => collection(db, 'stores', uid, 'stores');
+
+// =============================================================================
+// DEFAULT CATEGORIES
+// =============================================================================
+
+export const DEFAULT_CATEGORIES = [
+  { id: 'produce',   name: 'Produce',      icon: 'carrot',       colour: 'green',  orderIndex: 0 },
+  { id: 'bakery',    name: 'Bakery',       icon: 'croissant',    colour: 'amber',  orderIndex: 1 },
+  { id: 'dairy',     name: 'Dairy & eggs', icon: 'milk',         colour: 'blue',   orderIndex: 2 },
+  { id: 'meat',      name: 'Meat & fish',  icon: 'beef',         colour: 'red',    orderIndex: 3 },
+  { id: 'frozen',    name: 'Frozen',       icon: 'snowflake',    colour: 'teal',   orderIndex: 4 },
+  { id: 'pantry',    name: 'Pantry',       icon: 'soup',         colour: 'coral',  orderIndex: 5 },
+  { id: 'household', name: 'Household',    icon: 'spray-can',    colour: 'purple', orderIndex: 6 },
+  { id: 'other',     name: 'Other',        icon: 'shopping-bag', colour: 'gray',   orderIndex: 7 },
+];
+
+// =============================================================================
+// MIGRATION — run once to move categories/stores to per-list
+// =============================================================================
+
+export async function migrateToPerListData(uid) {
+  const migrationRef = doc(db, 'users', uid, 'prefs', 'migrated_v14');
+  const migSnap = await getDoc(migrationRef);
+  if (migSnap.exists()) return; // already migrated
+
+  console.log('Running v1.4.0 migration...');
+
+  // Get existing global categories and stores
+  const legacyCatsSnap = await getDocs(legacyCatsRef(uid));
+  const legacyStrsSnap = await getDocs(legacyStrsRef(uid));
+
+  const legacyCats = legacyCatsSnap.empty
+    ? DEFAULT_CATEGORIES
+    : legacyCatsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
+
+  const legacyStores = legacyStrsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Get all lists this user owns/is member of
+  const lists = await getLists(uid);
+
+  for (const list of lists) {
+    // Check if list already has categories (e.g. already migrated from another member)
+    const existingCatsSnap = await getDocs(listCatsRef(list.id));
+    if (existingCatsSnap.empty) {
+      // Seed with user's existing categories
+      const batch = writeBatch(db);
+      legacyCats.forEach(cat => {
+        batch.set(listCatRef(list.id, cat.id), {
+          name: cat.name,
+          icon: cat.icon || null,
+          colour: cat.colour || 'gray',
+          orderIndex: cat.orderIndex ?? 0,
+          active: true,
+        });
+      });
+      await batch.commit();
+    }
+
+    const existingStrsSnap = await getDocs(listStrsRef(list.id));
+    if (existingStrsSnap.empty && legacyStores.length > 0) {
+      const batch = writeBatch(db);
+      legacyStores.forEach(store => {
+        batch.set(listStrRef(list.id, store.id), { name: store.name });
+      });
+      await batch.commit();
+    }
+  }
+
+  // Mark migration complete
+  await setDoc(migrationRef, { migratedAt: serverTimestamp() });
+  console.log('v1.4.0 migration complete');
+}
 
 // =============================================================================
 // REAL-TIME LISTENERS
 // =============================================================================
 
 export function listenToLists(uid, callback) {
-  // Query requires a composite index on (memberIds, orderIndex).
-  // If the index isn't ready yet, fall back to unordered query.
   const orderedQuery = query(
     collection(db, 'lists'),
     where('memberIds', 'array-contains', uid),
@@ -47,17 +124,14 @@ export function listenToLists(uid, callback) {
     collection(db, 'lists'),
     where('memberIds', 'array-contains', uid)
   );
-
   let unsub = onSnapshot(orderedQuery, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, (err) => {
     console.warn('listenToLists ordered query failed, falling back:', err.message);
-    // Fall back to unordered — index is still building
     unsub = onSnapshot(fallbackQuery, (snap) => {
       callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
   });
-
   return () => unsub();
 }
 
@@ -67,22 +141,22 @@ export function listenToItems(listId, callback) {
   });
 }
 
-export function listenToCategories(uid, callback) {
-  return onSnapshot(catsRef(uid), async (snap) => {
+export function listenToListCategories(listId, callback) {
+  return onSnapshot(listCatsRef(listId), async (snap) => {
     if (snap.empty) {
-      // First run — seed defaults then the listener will fire again
-      await seedCategories(uid);
+      await seedListCategories(listId);
       return;
     }
     const cats = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
+      .filter(c => c.active !== false)
       .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
     callback(cats);
   });
 }
 
-export function listenToStores(uid, callback) {
-  return onSnapshot(storesRef(uid), (snap) => {
+export function listenToListStores(listId, callback) {
+  return onSnapshot(listStrsRef(listId), (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   });
 }
@@ -101,7 +175,6 @@ export async function getLists(uid) {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (err) {
-    // Index still building — fall back to unordered
     console.warn('getLists index not ready, falling back:', err.message);
     const q = query(collection(db, 'lists'), where('memberIds', 'array-contains', uid));
     const snap = await getDocs(q);
@@ -119,10 +192,14 @@ export async function createList(uid, { name, icon = 'shopping-cart', colour = '
     memberIds: [uid],
     memberNames: { [uid]: displayName },
     orderIndex: lists.length,
+    customOrder: true,
     createdAt: serverTimestamp(),
   };
   const ref = await addDoc(collection(db, 'lists'), newList);
-  return { id: ref.id, ...newList };
+  const listId = ref.id;
+  // Seed categories for the new list
+  await seedListCategories(listId);
+  return { id: listId, ...newList };
 }
 
 export async function updateList(listId, changes) {
@@ -132,9 +209,10 @@ export async function updateList(listId, changes) {
 export async function deleteList(uid, listId) {
   const lists = await getLists(uid);
   const remaining = lists.filter(l => l.id !== listId);
-  if (remaining.length > 0) {
+  if (remaining.length === 0) throw new Error('Cannot delete the last list');
+  const itemsSnap = await getDocs(itemsRef(listId));
+  if (itemsSnap.size > 0) {
     const fallbackId = remaining[0].id;
-    const itemsSnap = await getDocs(itemsRef(listId));
     const batch = writeBatch(db);
     itemsSnap.docs.forEach(d => {
       batch.set(itemRef(fallbackId, d.id), d.data());
@@ -232,135 +310,135 @@ export async function clearCheckedItems(listId) {
 }
 
 // =============================================================================
-// CATEGORIES
+// CATEGORIES — now per-list
 // =============================================================================
 
-export const DEFAULT_CATEGORIES = [
-  { id: 'produce',   name: 'Produce',      icon: 'carrot',       colour: 'green',  orderIndex: 0 },
-  { id: 'bakery',    name: 'Bakery',       icon: 'croissant',    colour: 'amber',  orderIndex: 1 },
-  { id: 'dairy',     name: 'Dairy & eggs', icon: 'milk',         colour: 'blue',   orderIndex: 2 },
-  { id: 'meat',      name: 'Meat & fish',  icon: 'beef',         colour: 'red',    orderIndex: 3 },
-  { id: 'frozen',    name: 'Frozen',       icon: 'snowflake',    colour: 'teal',   orderIndex: 4 },
-  { id: 'pantry',    name: 'Pantry',       icon: 'soup',         colour: 'coral',  orderIndex: 5 },
-  { id: 'household', name: 'Household',    icon: 'spray-can',    colour: 'purple', orderIndex: 6 },
-  { id: 'other',     name: 'Other',        icon: 'shopping-bag', colour: 'gray',   orderIndex: 7 },
-];
+async function seedListCategories(listId) {
+  const batch = writeBatch(db);
+  DEFAULT_CATEGORIES.forEach(cat => {
+    batch.set(listCatRef(listId, cat.id), {
+      name: cat.name,
+      icon: cat.icon || null,
+      colour: cat.colour || 'gray',
+      orderIndex: cat.orderIndex ?? 0,
+      active: true,
+    });
+  });
+  await batch.commit();
+}
 
-export async function getCategories(uid) {
-  const snap = await getDocs(catsRef(uid));
+export async function getCategories(listId) {
+  const snap = await getDocs(listCatsRef(listId));
   if (snap.empty) {
-    await seedCategories(uid);
-    return DEFAULT_CATEGORIES;
+    await seedListCategories(listId);
+    return DEFAULT_CATEGORIES.map(c => ({ ...c, active: true }));
   }
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(c => c.active !== false)
+    .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
+}
+
+export async function getAllCategories(listId) {
+  // Returns all including inactive — for settings management
+  const snap = await getDocs(listCatsRef(listId));
   return snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
 }
 
-async function seedCategories(uid) {
-  const batch = writeBatch(db);
-  DEFAULT_CATEGORIES.forEach(cat => batch.set(catRef(uid, cat.id), cat));
-  await batch.commit();
-}
-
-export async function addCategory(uid, input) {
+export async function addCategory(listId, input) {
   const catData = typeof input === 'string' ? { name: input } : input;
-  const cats = await getCategories(uid);
+  const cats = await getAllCategories(listId);
   const newCat = {
     name: (catData.name || '').trim(),
     icon: catData.icon || null,
     colour: catData.colour || 'gray',
     orderIndex: cats.length,
+    active: true,
   };
-  const ref = await addDoc(catsRef(uid), newCat);
+  const ref = await addDoc(listCatsRef(listId), newCat);
   return { id: ref.id, ...newCat };
 }
 
-export async function updateCategory(uid, catId, changes) {
-  await updateDoc(catRef(uid, catId), changes);
+export async function updateCategory(listId, catId, changes) {
+  await updateDoc(listCatRef(listId, catId), changes);
 }
 
-export async function deleteCategory(uid, catId) {
-  await deleteDoc(catRef(uid, catId));
-  const lists = await getLists(uid);
-  for (const list of lists) {
-    const snap = await getDocs(itemsRef(list.id));
-    const batch = writeBatch(db);
-    snap.docs.forEach(d => {
-      if (d.data().categoryId === catId) batch.update(d.ref, { categoryId: 'other' });
-    });
-    await batch.commit();
-  }
-}
-
-export async function reorderCategories(uid, orderedIds) {
+export async function deleteCategory(listId, catId) {
+  // Soft delete — mark inactive so items aren't orphaned
+  await updateDoc(listCatRef(listId, catId), { active: false });
+  // Reassign items using this category to 'other'
+  const snap = await getDocs(itemsRef(listId));
   const batch = writeBatch(db);
-  orderedIds.forEach((id, i) => batch.update(catRef(uid, id), { orderIndex: i }));
+  snap.docs.forEach(d => {
+    if (d.data().categoryId === catId) batch.update(d.ref, { categoryId: 'other' });
+  });
+  if (batch._mutations?.length > 0) await batch.commit();
+}
+
+export async function reorderCategories(listId, orderedIds) {
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, i) => batch.update(listCatRef(listId, id), { orderIndex: i }));
   await batch.commit();
 }
 
 // =============================================================================
-// STORES
+// STORES — now per-list
 // =============================================================================
 
-export async function getStores(uid) {
-  const snap = await getDocs(storesRef(uid));
+export async function getStores(listId) {
+  const snap = await getDocs(listStrsRef(listId));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export async function addStore(uid, name) {
-  const ref = await addDoc(storesRef(uid), { name: name.trim() });
+export async function addStore(listId, name) {
+  const ref = await addDoc(listStrsRef(listId), { name: name.trim() });
   return { id: ref.id, name: name.trim() };
 }
 
-export async function updateStore(uid, storeId, changes) {
-  await updateDoc(storeRef(uid, storeId), changes);
+export async function updateStore(listId, storeId, changes) {
+  await updateDoc(listStrRef(listId, storeId), changes);
 }
 
-export async function deleteStore(uid, storeId) {
-  await deleteDoc(storeRef(uid, storeId));
-  const lists = await getLists(uid);
-  for (const list of lists) {
-    const snap = await getDocs(itemsRef(list.id));
-    const batch = writeBatch(db);
-    snap.docs.forEach(d => {
-      const sids = d.data().storeIds || [];
-      if (sids.includes(storeId)) batch.update(d.ref, { storeIds: sids.filter(s => s !== storeId) });
-    });
-    await batch.commit();
-  }
+export async function deleteStore(listId, storeId) {
+  await deleteDoc(listStrRef(listId, storeId));
+  const snap = await getDocs(itemsRef(listId));
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => {
+    const sids = d.data().storeIds || [];
+    if (sids.includes(storeId)) batch.update(d.ref, { storeIds: sids.filter(s => s !== storeId) });
+  });
+  if (snap.docs.length > 0) await batch.commit();
 }
 
 // =============================================================================
-// PRICES
+// PRICES — now per-list (shared between all members)
 // =============================================================================
 
-export async function getPrices(uid) {
-  const snap = await getDoc(doc(db, 'users', uid, 'prefs', 'prices'));
-  return snap.exists() ? snap.data() : {};
+export async function getPrice(listId, itemName) {
+  const key = itemName.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+  const snap = await getDoc(listPriceRef(listId, key));
+  return snap.exists() ? snap.data() : null;
 }
 
-export async function getPrice(uid, itemName) {
-  const prices = await getPrices(uid);
-  return prices[itemName.toLowerCase().trim()]?.current || null;
-}
-
-export async function setPrice(uid, itemName, price, unit) {
+export async function setPrice(listId, itemName, price, unit) {
   if (!itemName || !price || !unit) return null;
-  const key = itemName.toLowerCase().trim();
-  const record = { price: parseFloat(price), unit, date: Date.now() };
-  const ref = doc(db, 'users', uid, 'prefs', 'prices');
-  const snap = await getDoc(ref);
-  const prices = snap.exists() ? snap.data() : {};
-  const existing = prices[key] || { history: [] };
-  existing.current = record;
-  existing.history = [...(existing.history || []), record].slice(-20);
-  await setDoc(ref, { ...prices, [key]: existing }, { merge: true });
+  const key = itemName.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+  const record = { price: parseFloat(price), unit, date: Date.now(), itemName };
+  await setDoc(listPriceRef(listId, key), record);
   return record;
 }
 
+export async function getAllPrices(listId) {
+  const snap = await getDocs(listPricesRef(listId));
+  const result = {};
+  snap.docs.forEach(d => { result[d.id] = d.data(); });
+  return result;
+}
+
 // =============================================================================
-// DISPLAY SETTINGS
+// DISPLAY SETTINGS — private per user
 // =============================================================================
 
 const DEFAULT_DISPLAY = {
@@ -368,7 +446,7 @@ const DEFAULT_DISPLAY = {
   showStore:    true,
   showCategory: true,
   showAddedBy:  false,
-  theme:        'auto',  // 'auto' | 'light' | 'dark'
+  theme:        'auto',
 };
 
 export async function getDisplaySettings(uid) {
@@ -381,25 +459,8 @@ export async function setDisplaySettings(uid, changes) {
 }
 
 // =============================================================================
-// EXPORT
+// ITEM HISTORY — private per user
 // =============================================================================
-
-export async function exportAll(uid, lists) {
-  const result = { version: 2, exportedAt: Date.now(), lists: [] };
-  for (const list of lists) {
-    const items = await getItems(list.id);
-    result.lists.push({ ...list, items });
-  }
-  result.categories = await getCategories(uid);
-  result.stores = await getStores(uid);
-  return result;
-}
-
-// =============================================================================
-// ITEM HISTORY — implicit history from all items ever added
-// =============================================================================
-// Stored as a simple map of lowercase name -> { name, categoryId, lastUsed }
-// under /users/{uid}/prefs/history
 
 export async function getItemHistory(uid) {
   const snap = await getDoc(doc(db, 'users', uid, 'prefs', 'history'));
@@ -420,7 +481,7 @@ export async function recordItemHistory(uid, item) {
 }
 
 // =============================================================================
-// RECIPES — stored per user
+// RECIPES — private per user
 // =============================================================================
 
 const recipesRef = (uid) => collection(db, 'users', uid, 'recipes');
@@ -458,4 +519,19 @@ export async function updateRecipe(uid, recipeId, changes) {
 
 export async function deleteRecipe(uid, recipeId) {
   await deleteDoc(recipeRef(uid, recipeId));
+}
+
+// =============================================================================
+// EXPORT
+// =============================================================================
+
+export async function exportAll(uid, lists) {
+  const result = { version: 2, exportedAt: Date.now(), lists: [] };
+  for (const list of lists) {
+    const items = await getItems(list.id);
+    const categories = await getAllCategories(list.id);
+    const stores = await getStores(list.id);
+    result.lists.push({ ...list, items, categories, stores });
+  }
+  return result;
 }
