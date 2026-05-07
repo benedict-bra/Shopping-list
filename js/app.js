@@ -529,12 +529,12 @@ function openListIconModal(existingList) {
         <span id="nl-preview-name" class="list-preview-name">${escapeHtml(existingList?.name || 'New list')}</span>
       </div>
 
-      <div class="modal-row" style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
+      <div class="modal-row" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div style="min-width:0;flex:1;">
           <div style="font-size:14px;">Aisle order</div>
           <div style="font-size:11px;color:var(--text-muted);">Group items by category</div>
         </div>
-        <label class="toggle-switch">
+        <label class="toggle-switch" style="flex-shrink:0;">
           <input type="checkbox" id="nl-custom-order" ${(isEdit ? existingList.customOrder !== false : true) ? 'checked' : ''} />
           <span class="toggle-track"></span>
         </label>
