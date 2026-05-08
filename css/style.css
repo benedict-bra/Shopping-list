@@ -2579,3 +2579,28 @@ input, select, textarea { font: inherit; color: inherit; }
 .item-highlight {
   animation: item-flash 1.5s ease-out forwards;
 }
+
+/* ── Aisle order modal ───────────────────────────────────────────────────── */
+.aisle-order-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px 4px;
+  pointer-events: none;
+}
+
+.aisle-order-divider span {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-faint);
+}
+
+.aisle-order-divider::before,
+.aisle-order-divider::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--border-strong);
+}
