@@ -3332,30 +3332,27 @@ async function openAisleOrderModal(listId) {
   modal.querySelectorAll('.aisle-order-check').forEach(cb => {
     cb.addEventListener('change', () => {
       const row = cb.closest('li');
-      const list = document.getElementById('aisle-order-list');
+      const listEl = document.getElementById('aisle-order-list');
       const divider = modal.querySelector('.aisle-order-divider');
 
       if (cb.checked) {
-        // Move to active section (before divider)
         row.setAttribute('draggable', 'true');
         row.querySelector('.drag-handle').style.visibility = 'visible';
         if (divider) {
-          list.insertBefore(row, divider);
+          listEl.insertBefore(row, divider);
         } else {
-          list.appendChild(row);
+          listEl.appendChild(row);
         }
       } else {
-        // Move to inactive section (after divider)
         row.setAttribute('draggable', 'false');
         row.querySelector('.drag-handle').style.visibility = 'hidden';
-        if (!divider) {
-          // Create divider
+        if (!modal.querySelector('.aisle-order-divider')) {
           const div = document.createElement('li');
           div.className = 'aisle-order-divider';
           div.innerHTML = '<span>Not in use</span>';
-          list.appendChild(div);
+          listEl.appendChild(div);
         }
-        list.appendChild(row);
+        listEl.appendChild(row);
       }
     });
   });
@@ -3418,43 +3415,55 @@ function bindAisleOrderDrag(modal) {
   let draggedRow = null;
   const list = modal.querySelector('#aisle-order-list');
 
-  list.querySelectorAll('li[draggable="true"]').forEach(row => {
-    row.addEventListener('dragstart', e => {
-      draggedRow = row;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
+  // Use event delegation on the list so newly moved rows work too
+  list.addEventListener('dragstart', e => {
+    const row = e.target.closest('li[draggable="true"]');
+    if (!row) return;
+    draggedRow = row;
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  list.addEventListener('dragend', () => {
+    if (draggedRow) draggedRow.classList.remove('dragging');
+    list.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(el => {
+      el.classList.remove('drag-over-top', 'drag-over-bottom');
     });
-    row.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      list.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(el => {
-        el.classList.remove('drag-over-top', 'drag-over-bottom');
-      });
-      draggedRow = null;
+    draggedRow = null;
+  });
+
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    const row = e.target.closest('li');
+    if (!row || !draggedRow || draggedRow === row || row.classList.contains('aisle-order-divider')) return;
+    // Only allow dropping within the active (checked) section
+    if (!row.querySelector('.aisle-order-check')?.checked) return;
+    list.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(el => {
+      el.classList.remove('drag-over-top', 'drag-over-bottom');
     });
-    row.addEventListener('dragover', e => {
-      e.preventDefault();
-      if (!draggedRow || draggedRow === row || row.classList.contains('aisle-order-divider')) return;
-      const rect = row.getBoundingClientRect();
-      const before = (e.clientY - rect.top) < rect.height / 2;
-      row.classList.toggle('drag-over-top', before);
-      row.classList.toggle('drag-over-bottom', !before);
-    });
-    row.addEventListener('dragleave', () => {
-      row.classList.remove('drag-over-top', 'drag-over-bottom');
-    });
-    row.addEventListener('drop', e => {
-      e.preventDefault();
-      row.classList.remove('drag-over-top', 'drag-over-bottom');
-      if (!draggedRow || draggedRow === row) return;
-      const rect = row.getBoundingClientRect();
-      const before = (e.clientY - rect.top) < rect.height / 2;
-      const divider = list.querySelector('.aisle-order-divider');
-      // Only drop before divider
-      if (divider && (row === divider || row.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING)) {
-        if (before) list.insertBefore(draggedRow, row);
-        else list.insertBefore(draggedRow, row.nextSibling);
-      }
-    });
+    const rect = row.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    row.classList.toggle('drag-over-top', before);
+    row.classList.toggle('drag-over-bottom', !before);
+  });
+
+  list.addEventListener('dragleave', e => {
+    const row = e.target.closest('li');
+    if (row) row.classList.remove('drag-over-top', 'drag-over-bottom');
+  });
+
+  list.addEventListener('drop', e => {
+    e.preventDefault();
+    const row = e.target.closest('li');
+    if (!row || !draggedRow || draggedRow === row) return;
+    row.classList.remove('drag-over-top', 'drag-over-bottom');
+    const rect = row.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    if (before) {
+      list.insertBefore(draggedRow, row);
+    } else {
+      list.insertBefore(draggedRow, row.nextSibling);
+    }
   });
 }
 
