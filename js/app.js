@@ -576,29 +576,45 @@ function openListIconModal(existingList) {
         <div style="font-size:14px;">Aisle order</div>
         <div style="font-size:11px;color:var(--text-muted);">Group items by category</div>
       </div>
-      <label class="toggle-switch" style="width:44px;height:26px;flex-shrink:0;display:block;position:relative;cursor:pointer;">
-        <input type="checkbox" id="nl-custom-order" style="position:absolute;opacity:0;width:0;height:0;" />
-        <span style="display:block;width:44px;height:26px;background:#bbb;border-radius:13px;position:relative;transition:background 0.2s;" id="nl-toggle-track">
-          <span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);transition:transform 0.2s;" id="nl-toggle-thumb"></span>
-        </span>
-      </label>`;
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <button id="nl-edit-order" class="btn-secondary btn-sm" style="display:none;">Edit</button>
+        <label class="toggle-switch" style="width:44px;height:26px;flex-shrink:0;display:block;position:relative;cursor:pointer;">
+          <input type="checkbox" id="nl-custom-order" style="position:absolute;opacity:0;width:0;height:0;" />
+          <span style="display:block;width:44px;height:26px;background:#bbb;border-radius:13px;position:relative;transition:background 0.2s;" id="nl-toggle-track">
+            <span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);transition:transform 0.2s;" id="nl-toggle-thumb"></span>
+          </span>
+        </label>
+      </div>`;
     const checkbox = document.getElementById('nl-custom-order');
     const track = document.getElementById('nl-toggle-track');
     const thumb = document.getElementById('nl-toggle-thumb');
+
+    const editOrderBtn = document.getElementById('nl-edit-order');
 
     function updateToggleVisual() {
       if (checkbox.checked) {
         track.style.background = '#2a9d8f';
         thumb.style.transform = 'translateX(18px)';
+        if (editOrderBtn) editOrderBtn.style.display = '';
       } else {
         track.style.background = '#bbb';
         thumb.style.transform = 'translateX(0)';
+        if (editOrderBtn) editOrderBtn.style.display = 'none';
       }
     }
 
     checkbox.checked = isChecked;
     updateToggleVisual();
     checkbox.addEventListener('change', updateToggleVisual);
+
+    // Edit order button opens aisle order modal
+    editOrderBtn?.addEventListener('click', () => {
+      const listId = isEdit ? existingList.id : null;
+      if (listId) {
+        modal.remove();
+        openAisleOrderModal(listId);
+      }
+    });
   }
 
   // Live preview helper
@@ -1854,23 +1870,15 @@ function renderStoresView(targetContainer) {
 
   // ── CATEGORIES ──────────────────────────────────────────────────────────────
   html += `
-    <div class="settings-section-label" style="margin-bottom: 8px;">
-      Categories
-      <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:6px;">
-        — ${state.lists.find(l => l.id === state.activeListId)?.name || 'current list'}
-      </span>
-    </div>
+    <div class="settings-section-label" style="margin-bottom: 8px;">Category pool</div>
     <p class="settings-hint">
-      Drag to set aisle order for this list. Tap the colour dot to restyle.
-      Categories are shared with all members of this list.
+      Add, rename, or restyle categories here. To set the aisle order for a specific list,
+      tap Edit on that list and use the Aisle order toggle.
     </p>
     <div class="store-card" style="margin-bottom: 1.5rem;">
       <ul class="aisle-list" id="cat-order-list">
         ${state.categories.map(c => `
-          <li class="aisle-row" draggable="true" data-cat-id="${c.id}">
-            <span class="drag-handle" aria-label="Drag to reorder">
-              <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
-            </span>
+          <li class="aisle-row" data-cat-id="${c.id}">
             ${categoryBadgeFor(c.id, 28)}
             <div class="aisle-name">
               <input class="aisle-name-input" data-cat-id="${c.id}" value="${escapeHtml(c.name)}" />
@@ -1949,8 +1957,7 @@ function renderStoresView(targetContainer) {
     });
   });
 
-  // Category drag-to-reorder (persists as the new global sort order)
-  bindCategoryDragAndDrop(container);
+  // No drag-to-reorder in pool — ordering is per-list via Edit aisle order
 
   // ── Store events ─────────────────────────────────────────────────────────────
   $('#add-store-btn', container)?.addEventListener('click', promptAddStore);
@@ -3276,6 +3283,178 @@ function setupAddSheet() {
     clearBtn.hidden = true;
     renderSheetSuggestions('');
     input.focus();
+  });
+}
+
+
+// =============================================================================
+// AISLE ORDER MODAL — per-list category selection and ordering
+// =============================================================================
+
+async function openAisleOrderModal(listId) {
+  const list = state.lists.find(l => l.id === listId);
+  if (!list) return;
+
+  // Load ALL categories from the pool (including inactive ones)
+  const allCats = await data.getAllCategories(listId);
+
+  // Active = those with active !== false, in their current order
+  const active = allCats.filter(c => c.active !== false)
+    .sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
+  const inactive = allCats.filter(c => c.active === false);
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.innerHTML = `
+    <div class="modal" role="dialog" aria-label="Edit aisle order">
+      <h3>Aisle order — ${escapeHtml(list.name)}</h3>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">
+        Checked categories are used in this list. Drag to set the order.
+        Uncheck to remove from this list's aisle order.
+      </p>
+      <ul class="aisle-list" id="aisle-order-list">
+        ${active.map(c => aisleOrderRow(c, true)).join('')}
+        ${inactive.length > 0 ? `
+          <li class="aisle-order-divider">
+            <span>Not in use</span>
+          </li>
+          ${inactive.map(c => aisleOrderRow(c, false)).join('')}
+        ` : ''}
+      </ul>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="aisle-cancel">Cancel</button>
+        <button class="btn-primary" id="aisle-save">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Bind checkbox toggles — move rows between active/inactive sections
+  modal.querySelectorAll('.aisle-order-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const row = cb.closest('li');
+      const list = document.getElementById('aisle-order-list');
+      const divider = modal.querySelector('.aisle-order-divider');
+
+      if (cb.checked) {
+        // Move to active section (before divider)
+        row.setAttribute('draggable', 'true');
+        row.querySelector('.drag-handle').style.visibility = 'visible';
+        if (divider) {
+          list.insertBefore(row, divider);
+        } else {
+          list.appendChild(row);
+        }
+      } else {
+        // Move to inactive section (after divider)
+        row.setAttribute('draggable', 'false');
+        row.querySelector('.drag-handle').style.visibility = 'hidden';
+        if (!divider) {
+          // Create divider
+          const div = document.createElement('li');
+          div.className = 'aisle-order-divider';
+          div.innerHTML = '<span>Not in use</span>';
+          list.appendChild(div);
+        }
+        list.appendChild(row);
+      }
+    });
+  });
+
+  // Drag to reorder active items
+  bindAisleOrderDrag(modal);
+
+  document.getElementById('aisle-cancel').addEventListener('click', () => {
+    modal.remove();
+    openListIconModal(list);
+  });
+
+  modal.addEventListener('click', e => {
+    if (e.target === modal) {
+      modal.remove();
+      openListIconModal(list);
+    }
+  });
+
+  document.getElementById('aisle-save').addEventListener('click', async () => {
+    const rows = [...modal.querySelectorAll('#aisle-order-list li:not(.aisle-order-divider)')];
+    const batch = [];
+    rows.forEach((row, i) => {
+      const catId = row.dataset.catId;
+      const isActive = row.querySelector('.aisle-order-check').checked;
+      batch.push({ catId, orderIndex: i, active: isActive });
+    });
+
+    // Save all at once
+    for (const { catId, orderIndex, active } of batch) {
+      await data.updateCategory(listId, catId, { orderIndex, active });
+    }
+
+    modal.remove();
+    // Reload categories for this list
+    await reloadAll();
+    render();
+    openListIconModal(list);
+  });
+}
+
+function aisleOrderRow(cat, isActive) {
+  const ramp = COLOUR_RAMPS[cat.colour] || COLOUR_RAMPS.gray;
+  return `
+    <li class="aisle-row" draggable="${isActive}" data-cat-id="${cat.id}">
+      <span class="drag-handle" style="visibility:${isActive ? 'visible' : 'hidden'};" aria-label="Drag">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+      </span>
+      <input type="checkbox" class="aisle-order-check" ${isActive ? 'checked' : ''}
+        style="width:18px;height:18px;accent-color:#2a9d8f;flex-shrink:0;cursor:pointer;" />
+      <span class="cat-icon-btn" data-icon="${cat.icon || 'shopping-bag'}"
+        style="--cat-text:${ramp.text};background:${ramp.text};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span class="cat-pill-icon"></span>
+      </span>
+      <span style="flex:1;font-size:14px;">${escapeHtml(cat.name)}</span>
+    </li>`;
+}
+
+function bindAisleOrderDrag(modal) {
+  let draggedRow = null;
+  const list = modal.querySelector('#aisle-order-list');
+
+  list.querySelectorAll('li[draggable="true"]').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      draggedRow = row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      list.querySelectorAll('.drag-over-top,.drag-over-bottom').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      draggedRow = null;
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!draggedRow || draggedRow === row || row.classList.contains('aisle-order-divider')) return;
+      const rect = row.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height / 2;
+      row.classList.toggle('drag-over-top', before);
+      row.classList.toggle('drag-over-bottom', !before);
+    });
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.classList.remove('drag-over-top', 'drag-over-bottom');
+      if (!draggedRow || draggedRow === row) return;
+      const rect = row.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height / 2;
+      const divider = list.querySelector('.aisle-order-divider');
+      // Only drop before divider
+      if (divider && (row === divider || row.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+        if (before) list.insertBefore(draggedRow, row);
+        else list.insertBefore(draggedRow, row.nextSibling);
+      }
+    });
   });
 }
 
